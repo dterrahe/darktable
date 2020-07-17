@@ -257,26 +257,10 @@ void *dt_control_expose(void *voidptr)
   dt_pthread_mutex_lock(&darktable.control->log_mutex);
   if(darktable.control->log_busy > 0)
   {
-    PangoRectangle ink;
-    PangoLayout *layout;
-    PangoFontDescription *desc = pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
-    const float fontsize = DT_PIXEL_APPLY_DPI(14);
-    pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
-    pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
-    layout = pango_cairo_create_layout(cr);
-    pango_layout_set_font_description(layout, desc);
-    pango_layout_set_text(layout, _("working..."), -1);
-    pango_layout_get_pixel_extents(layout, &ink, NULL);
-    const float xc = width / 2.0, yc = height * 0.85 - DT_PIXEL_APPLY_DPI(30), wd = ink.width * .5f;
-    cairo_move_to(cr, xc - wd, yc + 1. / 3. * fontsize - fontsize);
-    pango_cairo_layout_path(cr, layout);
-    cairo_set_line_width(cr, 2.0);
-    dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_LOG_BG);
-    cairo_stroke_preserve(cr);
-    dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_LOG_FG);
-    cairo_fill(cr);
-    pango_font_description_free(desc);
-    g_object_unref(layout);
+    cairo_set_line_width(cr, 10.0);
+    cairo_set_source_rgb(cr, .8, .0, .0);
+    cairo_rectangle(cr, 5, 5, width - 10, height - 10);
+    cairo_stroke(cr);
   }
   dt_pthread_mutex_unlock(&darktable.control->log_mutex);
 
