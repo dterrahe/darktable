@@ -243,6 +243,18 @@ void cleanup_pipe(dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, dt_dev_pixelp
   piece->data = NULL;
 }
 
+static void pass_on_change(GtkWidget *phantom, GtkWidget *real)
+{
+  dt_bauhaus_slider_set_soft(real, dt_bauhaus_slider_get(phantom));
+}
+
+static void sync_change(GtkWidget *real, GtkWidget *phantom)
+{
+  ++darktable.gui->reset;
+  dt_bauhaus_slider_set_soft(phantom, dt_bauhaus_slider_get(real));
+  ++darktable.gui->reset;
+}
+
 void reload_defaults(dt_iop_module_t *self)
 {
   dt_iop_scalepixels_params_t *d = self->default_params;
@@ -259,9 +271,55 @@ void reload_defaults(dt_iop_module_t *self)
   self->hide_enable_button = !self->default_enabled;
 
   if(self->widget)
-    gtk_label_set_text(GTK_LABEL(self->widget), self->default_enabled
-                       ? _("automatic pixel scaling")
-                       :_("automatic pixel scaling\nonly works for the sensors that need it."));
+  {
+    char *widgets[]
+    = { "<Darktable>/image operations/exposure/exposure/dynamic",
+        "<Darktable>/image operations/temperature/temperature/dynamic",
+        "<Darktable>/image operations/colorbalance/output saturation/dynamic",
+        "<Darktable>/image operations/colorbalance/contrast/dynamic",
+        NULL };
+
+    ++darktable.bauhaus->skip_accel;
+
+    char **cur_name = widgets;
+    while(*cur_name)
+    {
+        dt_accel_t *accel = NULL;
+        GSList *l = darktable.control->accelerator_list;
+        while(l)
+        {
+          accel = (dt_accel_t *)l->data;
+          if(accel && !strcmp(accel->path, *cur_name)) break;
+          l = g_slist_next(l);
+        }
+        if(l && accel->closure && DT_IS_BAUHAUS_WIDGET(accel->closure->data))
+        {
+          GtkWidget *real = GTK_WIDGET(accel->closure->data);
+          GtkWidget *phantom = dt_bauhaus_slider_new_with_range_and_feedback(self,
+                                dt_bauhaus_slider_get_hard_min(real),
+                                dt_bauhaus_slider_get_hard_max(real),
+                                dt_bauhaus_slider_get_step(real),
+                                dt_bauhaus_slider_get_default(real),
+                                dt_bauhaus_slider_get_digits(real),
+                                dt_bauhaus_slider_get_feedback(real));
+          dt_bauhaus_widget_set_label(phantom, NULL, dt_bauhaus_widget_get_label(real));
+          dt_bauhaus_slider_set_soft_range(phantom, dt_bauhaus_slider_get_soft_min(real),
+                                                    dt_bauhaus_slider_get_soft_max(real));
+          dt_bauhaus_slider_set_format(phantom, DT_BAUHAUS_WIDGET(real)->data.slider.format);
+          dt_bauhaus_slider_set_factor(phantom, DT_BAUHAUS_WIDGET(real)->data.slider.factor);
+          dt_bauhaus_slider_set_offset(phantom, DT_BAUHAUS_WIDGET(real)->data.slider.offset);
+
+          gtk_container_add(GTK_CONTAINER(self->widget), phantom);
+          g_signal_connect(G_OBJECT(phantom), "value-changed", G_CALLBACK(pass_on_change), real);
+          g_signal_connect(G_OBJECT(real), "value-changed", G_CALLBACK(sync_change), phantom);
+        }
+
+      cur_name++;
+    }
+    --darktable.bauhaus->skip_accel;
+
+    gtk_widget_show_all(self->widget);
+  }
 }
 
 void gui_update(dt_iop_module_t *self)
@@ -272,9 +330,7 @@ void gui_init(dt_iop_module_t *self)
 {
   IOP_GUI_ALLOC(scalepixels);
 
-  self->widget = dt_ui_label_new("");
-  gtk_label_set_line_wrap(GTK_LABEL(self->widget), TRUE);
-
+  self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 }
 
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
