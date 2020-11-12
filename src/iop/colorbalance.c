@@ -2088,15 +2088,15 @@ void gui_init(dt_iop_module_t *self)
 
   gtk_box_pack_start(GTK_BOX(self->widget), dt_ui_section_label_new(_("auto optimizers")), FALSE, FALSE, 0);
 
-  g->auto_luma = dt_color_picker_new(self, DT_COLOR_PICKER_AREA,
-                 dt_bauhaus_combobox_new(self));
+  g->auto_luma = dt_bauhaus_combobox_new(self);
   dt_bauhaus_widget_set_label(g->auto_luma, NULL, N_("optimize luma"));
+  dt_color_picker_new(self, DT_COLOR_PICKER_AREA, g->auto_luma);
   gtk_widget_set_tooltip_text(g->auto_luma, _("fit the whole histogram and center the average luma"));
   gtk_box_pack_start(GTK_BOX(self->widget), g->auto_luma, FALSE, FALSE, 0);
 
-  g->auto_color = dt_color_picker_new(self, DT_COLOR_PICKER_AREA,
-                  dt_bauhaus_combobox_new(self));
+  g->auto_color = dt_bauhaus_combobox_new(self);
   dt_bauhaus_widget_set_label(g->auto_color, NULL, N_("neutralize colors"));
+  dt_color_picker_new(self, DT_COLOR_PICKER_AREA, g->auto_color);
   gtk_widget_set_tooltip_text(g->auto_color, _("optimize the RGB curves to remove color casts"));
   gtk_box_pack_start(GTK_BOX(self->widget), g->auto_color, FALSE, FALSE, 0);
 

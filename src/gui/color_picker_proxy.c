@@ -21,6 +21,7 @@
 #include "libs/lib.h"
 #include "control/control.h"
 #include "gui/gtk.h"
+#include "gui/accelerators.h"
 #include "develop/blend.h"
 
 typedef struct dt_iop_color_picker_t
@@ -261,6 +262,16 @@ void dt_iop_color_picker_cleanup(void)
   DT_DEBUG_CONTROL_SIGNAL_DISCONNECT(darktable.signals, G_CALLBACK(_iop_color_picker_signal_callback), NULL);
 }
 
+static gboolean _color_picker_quad_press(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                         GdkModifierType modifier, GtkWidget *widget)
+{
+  dt_bauhaus_widget_set_quad_active(widget, !dt_bauhaus_widget_get_quad_active(widget));
+
+  g_signal_emit_by_name(G_OBJECT(widget), "quad-pressed");
+
+  return TRUE;
+}
+
 static GtkWidget *_color_picker_new(dt_iop_module_t *module, dt_iop_color_picker_kind_t kind, GtkWidget *w,
                                     const gboolean init_cst, const dt_iop_colorspace_type_t cst)
 {
@@ -278,7 +289,7 @@ static GtkWidget *_color_picker_new(dt_iop_module_t *module, dt_iop_color_picker
 
     return button;
   }
-  else
+  else if(DT_IS_BAUHAUS_WIDGET(w))
   {
     dt_bauhaus_widget_set_quad_paint(w, dtgtk_cairo_paint_colorpicker, CPF_STYLE_FLAT, NULL);
     dt_bauhaus_widget_set_quad_toggle(w, TRUE);
@@ -288,8 +299,25 @@ static GtkWidget *_color_picker_new(dt_iop_module_t *module, dt_iop_color_picker
     g_signal_connect_data(G_OBJECT(w), "quad-pressed",
                           G_CALLBACK(_iop_color_picker_callback), color_picker, (GClosureNotify)g_free, 0);
 
-    return w;
+    if(*dt_bauhaus_widget_get_label(w))
+    {
+      gchar *combined_label = g_strdup_printf("%s`%s", dt_bauhaus_widget_get_label(w), N_("color picker"));
+
+      if(darktable.control->accel_initialising)
+      {
+        dt_accel_register_iop(DT_BAUHAUS_WIDGET(w)->module->so, FALSE, combined_label, 0, 0);
+      }
+      else
+      {
+        GClosure *closure = g_cclosure_new(G_CALLBACK(_color_picker_quad_press), (gpointer)w, NULL);
+        dt_accel_connect_iop(DT_BAUHAUS_WIDGET(w)->module, combined_label, closure);
+      }
+
+      g_free(combined_label);
+    }
   }
+
+  return w;
 }
 
 GtkWidget *dt_color_picker_new(dt_iop_module_t *module, dt_iop_color_picker_kind_t kind, GtkWidget *w)

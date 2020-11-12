@@ -471,6 +471,8 @@ static inline void gui_init_section(struct dt_iop_module_t *self, char *section,
 
   gtk_box_pack_start(GTK_BOX(self->widget), label, FALSE, FALSE, 0);
 
+  // avoid creating color picker shortcut in wrong section
+  dt_color_picker_new(self, DT_COLOR_PICKER_POINT, hue);
   dt_bauhaus_widget_set_label(hue, section, N_("hue"));
   dt_bauhaus_slider_set_feedback(hue, 0);
   dt_bauhaus_slider_set_stop(hue, 0.0f  , 1.0f, 0.0f, 0.0f);
@@ -481,7 +483,6 @@ static inline void gui_init_section(struct dt_iop_module_t *self, char *section,
   dt_bauhaus_slider_set_stop(hue, 0.830f, 1.0f, 0.0f, 1.0f);
   dt_bauhaus_slider_set_stop(hue, 1.0f  , 1.0f, 0.0f, 0.0f);
   gtk_widget_set_tooltip_text(hue, _("select the hue tone"));
-  dt_color_picker_new(self, DT_COLOR_PICKER_POINT, hue);
 
   dt_bauhaus_widget_set_label(saturation, section, N_("saturation"));
   dt_bauhaus_slider_set_stop(saturation, 0.0f, 0.2f, 0.2f, 0.2f);
@@ -506,10 +507,12 @@ void gui_init(struct dt_iop_module_t *self)
   ++darktable.bauhaus->skip_accel;
   GtkWidget *shadows_box = self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   g->shadow_hue_gslider = dt_bauhaus_slider_from_params(self, "shadow_hue");
+  dt_bauhaus_widget_set_label(g->shadow_hue_gslider, NULL, "");
   g->shadow_sat_gslider = dt_bauhaus_slider_from_params(self, "shadow_saturation");
 
   GtkWidget *highlights_box = self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   g->highlight_hue_gslider = dt_bauhaus_slider_from_params(self, "highlight_hue");
+  dt_bauhaus_widget_set_label(g->highlight_hue_gslider, NULL, "");
   g->highlight_sat_gslider = dt_bauhaus_slider_from_params(self, "highlight_saturation");
   --darktable.bauhaus->skip_accel;
 
