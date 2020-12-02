@@ -1598,6 +1598,20 @@ static void dt_iop_init_module_so(void *m)
   // do not init accelerators if there is no gui
   if(darktable.gui)
   {
+    dt_view_t *dark_view = darktable.view_manager->proxy.darkroom.view;
+    if(dark_view)
+    {
+      dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
+      new_action->label = module->op;
+      new_action->label_translated = module->name();
+      new_action->type = DT_ACTION_TYPE_IOP;
+      new_action->owner = &dark_view->actions;
+      module->actions.data = new_action;
+      dt_action_t *dark_view_action = dark_view->actions.data;
+      module->actions.next = dark_view_action->target;
+      dark_view_action->target = &module->actions;
+    }
+
     // Calling the accelerator initialization callback, if present
     init_key_accels(module);
 

@@ -28,6 +28,50 @@
 #include <assert.h>
 #include <gtk/gtk.h>
 
+void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
+{
+  // add to module_so actions list
+  // split on `; find any sections or if not found, create (at start)
+  gchar **split_path = g_strsplit(path, "`", 6);
+  gchar **cur_path = split_path;
+  GSList *owner = &self->so->actions;
+  while(*cur_path)
+  {
+    GSList **owner_ptr = (GSList **)&((dt_action_t *)owner->data)->target;
+    GSList *found = *owner_ptr;
+    while(found)
+    {
+      dt_action_t *ac = found->data;
+      if(!strcmp(ac->label, *cur_path)) break;
+      found = g_slist_next(found);
+    }
+    if(found)
+      owner = found;
+    else
+    {
+      if(!darktable.control->accel_initialising) break;
+
+      dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
+      new_action->label = g_strdup(*cur_path);
+      new_action->label_translated = g_strdup(Q_(*cur_path));
+      new_action->owner = owner;
+      new_action->type = DT_ACTION_TYPE_SECTION;
+      *owner_ptr = g_slist_prepend(*owner_ptr, new_action);
+      owner = *owner_ptr;
+    }
+
+    cur_path++;
+  }
+
+  dt_action_t *ac = owner->data;
+  ac->type = DT_ACTION_TYPE_WIDGET;
+  ac->local = local;
+  ac->target = widget;
+  // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
+
+  g_strfreev(split_path);
+}
+
 typedef struct _accel_iop_t
 {
   dt_accel_t *accel;
@@ -186,6 +230,8 @@ void dt_accel_register_iop(dt_iop_module_so_t *so, gboolean local, const gchar *
   accel->local = local;
   accel->views = DT_VIEW_DARKROOM;
   darktable.control->accelerator_list = g_slist_prepend(darktable.control->accelerator_list, accel);
+
+  // add to module_so actions list
 }
 
 void dt_accel_register_lib_as_view(gchar *view_name, const gchar *path, guint accel_key, GdkModifierType mods)
@@ -773,6 +819,23 @@ void dt_accel_connect_slider_iop(dt_iop_module_t *module, const gchar *path, Gtk
         bauhaus_dynamic_callback };
 
   _accel_connect_actions_iop(module, path, slider, _slider_actions, slider_callbacks);
+
+  GSList *action = module->so->actions.next;
+  while(action)
+  {
+    // branch to section if required
+    if(!strcmp(path, ((dt_action_t *)action->data)->label)) break;
+
+    action = g_slist_next(action);
+  }
+
+  if(action)
+  {
+    dt_action_widget_t *new_widget = calloc(1, sizeof(dt_action_widget_t));
+    new_widget->action = (gpointer)action;
+    new_widget->widget = slider;
+    module->widget_list = g_slist_prepend(module->widget_list, new_widget);
+  }
 }
 
 void dt_accel_connect_instance_iop(dt_iop_module_t *module)

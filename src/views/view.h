@@ -170,6 +170,8 @@ typedef struct dt_view_t
 
   GSList *accel_closures;
   GtkWidget *dynamic_accel_current;
+
+  GSList actions;
 } dt_view_t;
 
 typedef enum dt_view_image_over_t

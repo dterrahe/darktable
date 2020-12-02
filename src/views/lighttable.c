@@ -371,8 +371,9 @@ void init(dt_view_t *self)
 {
   self->data = calloc(1, sizeof(dt_library_t));
 
-  darktable.view_manager->proxy.lighttable.get_preview_state = _preview_get_state;
   darktable.view_manager->proxy.lighttable.view = self;
+
+  darktable.view_manager->proxy.lighttable.get_preview_state = _preview_get_state;
   darktable.view_manager->proxy.lighttable.change_offset = _lighttable_change_offset;
   darktable.view_manager->proxy.lighttable.culling_init_mode = _culling_reinit;
   darktable.view_manager->proxy.lighttable.culling_preview_refresh = _culling_preview_refresh;

@@ -219,6 +219,19 @@ static int dt_view_load_module(void *v, const char *libname, const char *module_
   if(view->init) view->init(view);
   if(darktable.gui && view->init_key_accels) view->init_key_accels(view);
 
+  if(darktable.gui)
+  {
+      dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
+      new_action->label = view->module_name;
+      new_action->label_translated = view->name(view);
+      new_action->type = DT_ACTION_TYPE_VIEW;
+      new_action->owner = &darktable.control->actions;
+      view->actions.data = new_action;
+      dt_action_t *control_action = darktable.control->actions.data;
+      view->actions.next = control_action->target;
+      control_action->target = &view->actions;
+  }
+
   return 0;
 
 error:

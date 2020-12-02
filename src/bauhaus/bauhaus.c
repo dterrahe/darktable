@@ -885,6 +885,8 @@ void dt_bauhaus_widget_set_label(GtkWidget *widget, const char *section_orig, co
           dt_accel_connect_combobox_iop(w->module, combined_label, widget);
         }
       }
+
+      dt_action_define(w->module, combined_label, FALSE, 0, 0, widget);
     }
 
     // construct control path name and insert into keymap:

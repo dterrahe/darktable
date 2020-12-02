@@ -45,6 +45,14 @@
 
 void dt_control_init(dt_control_t *s)
 {
+  dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
+  new_action->label = "global";
+  new_action->label_translated = _("global");
+  new_action->type = DT_ACTION_TYPE_GLOBAL;
+  new_action->owner = NULL;
+  s->actions.data = new_action;
+  s->actions.next = NULL;
+
   memset(s->vimkey, 0, sizeof(s->vimkey));
   s->vimkey_cnt = 0;
 

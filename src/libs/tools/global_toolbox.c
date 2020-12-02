@@ -37,13 +37,14 @@ DT_MODULE(1)
 
 typedef struct dt_lib_tool_preferences_t
 {
-  GtkWidget *preferences_button, *grouping_button, *overlays_button, *help_button;
+  GtkWidget *preferences_button, *grouping_button, *overlays_button, *help_button, *keymap_button;
   GtkWidget *over_popup, *thumbnails_box, *culling_box;
   GtkWidget *over_label, *over_r0, *over_r1, *over_r2, *over_r3, *over_r4, *over_r5, *over_r6, *over_timeout,
       *over_tt;
   GtkWidget *over_culling_label, *over_culling_r0, *over_culling_r3, *over_culling_r4, *over_culling_r6,
       *over_culling_timeout, *over_culling_tt;
   gboolean disable_over_events;
+  gboolean keymap_multiple;
 } dt_lib_tool_preferences_t;
 
 /* callback for grouping button */
@@ -52,6 +53,8 @@ static void _lib_filter_grouping_button_clicked(GtkWidget *widget, gpointer user
 static void _lib_preferences_button_clicked(GtkWidget *widget, gpointer user_data);
 /* callback for help button */
 static void _lib_help_button_clicked(GtkWidget *widget, gpointer user_data);
+/* callback for key mapping button */
+static void _lib_keymap_button_clicked(GtkWidget *widget, gpointer user_data);
 
 const char *name(dt_lib_module_t *self)
 {
@@ -491,6 +494,13 @@ void gui_init(dt_lib_module_t *self)
   g_signal_connect(G_OBJECT(d->help_button), "clicked", G_CALLBACK(_lib_help_button_clicked), d);
   dt_gui_add_help_link(d->help_button, dt_get_help_url("global_toolbox_help"));
 
+  /* create the preference button */
+  d->keymap_button = dtgtk_togglebutton_new(dtgtk_cairo_paint_bracket, CPF_STYLE_FLAT, NULL);
+  gtk_box_pack_start(GTK_BOX(self->widget), d->keymap_button, FALSE, FALSE, 0);
+  gtk_widget_set_tooltip_text(d->keymap_button, _("define shortcuts"));
+  g_signal_connect(G_OBJECT(d->keymap_button), "clicked", G_CALLBACK(_lib_keymap_button_clicked), d);
+  dt_gui_add_help_link(d->keymap_button, dt_get_help_url("global_toolbox_keymap"));
+
   // the rest of these is added in reverse order as they are always put at the end of the container.
   // that's done so that buttons added via Lua will come first.
 
@@ -501,6 +511,7 @@ void gui_init(dt_lib_module_t *self)
   g_signal_connect(G_OBJECT(d->preferences_button), "clicked", G_CALLBACK(_lib_preferences_button_clicked),
                    NULL);
   dt_gui_add_help_link(d->preferences_button, dt_get_help_url("global_toolbox_preferences"));
+
 }
 
 void gui_cleanup(dt_lib_module_t *self)
@@ -554,7 +565,7 @@ static char *get_help_url(GtkWidget *widget)
   return NULL;
 }
 
-static void _main_do_event(GdkEvent *event, gpointer data)
+static void _main_do_event_help(GdkEvent *event, gpointer data)
 {
   dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)data;
 
@@ -686,14 +697,79 @@ static void _main_do_event(GdkEvent *event, gpointer data)
   if(!handled) gtk_main_do_event(event);
 }
 
+static void _main_do_event_keymap(GdkEvent *event, gpointer data)
+{
+  dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)data;
+
+  gboolean handled = FALSE;
+
+  switch(event->type)
+  {
+    case GDK_BUTTON_PRESS:
+    {
+
+      // gdk_setting_get() //double-click time
+      // FIXME: deal with right-click to end either widget selection or key-press definition.
+
+
+      // reset GTK to normal behaviourchec
+      dt_control_allow_change_cursor();
+      dt_control_change_cursor(GDK_LEFT_PTR);
+      gdk_event_handler_set((GdkEventFunc)gtk_main_do_event, NULL, NULL);
+      g_signal_handlers_block_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->keymap_button), FALSE);
+      g_signal_handlers_unblock_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
+
+      GtkWidget *event_widget = gtk_get_event_widget(event);
+      if(event_widget)
+      {
+          // map key
+      }
+      else
+      {
+        dt_control_log(_("this element cannot be shortcutted"));
+      }
+      handled = TRUE;
+      break;
+    }
+    case GDK_ENTER_NOTIFY:
+    case GDK_LEAVE_NOTIFY:
+    {
+      GtkWidget *event_widget = gtk_get_event_widget(event);
+      if(event_widget)
+      {
+        // TODO: find a better way to tell the user that the hovered widget has a help link
+        dt_cursor_t cursor = event->type == GDK_ENTER_NOTIFY ? GDK_COFFEE_MUG : GDK_X_CURSOR;
+        dt_control_allow_change_cursor();
+        dt_control_change_cursor(cursor);
+        dt_control_forbid_change_cursor();
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if(!handled) gtk_main_do_event(event);
+}
+
 static void _lib_help_button_clicked(GtkWidget *widget, gpointer user_data)
 {
   dt_control_change_cursor(GDK_X_CURSOR);
   dt_control_forbid_change_cursor();
-  gdk_event_handler_set(_main_do_event, user_data, NULL);
+  gdk_event_handler_set(_main_do_event_help, user_data, NULL);
 }
 
+static void _lib_keymap_button_clicked(GtkWidget *widget, gpointer user_data)
+{
+  dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)user_data;
 
+  d->keymap_multiple = TRUE;
+
+  dt_control_change_cursor(GDK_X_CURSOR);
+  dt_control_forbid_change_cursor();
+  gdk_event_handler_set(_main_do_event_keymap, user_data, NULL);
+}
 
 void init_key_accels(dt_lib_module_t *self)
 {

@@ -162,6 +162,8 @@ typedef struct dt_control_t
   gchar *accel_remap_str;
   GtkTreePath *accel_remap_path;
 
+  GSList actions;
+
   char vimkey[256];
   int vimkey_cnt;
 

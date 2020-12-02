@@ -24,6 +24,38 @@
 #include "libs/lib.h"
 #include "views/view.h"
 
+typedef enum dt_action_type_t
+{
+  DT_ACTION_TYPE_GLOBAL,
+  DT_ACTION_TYPE_VIEW,
+  DT_ACTION_TYPE_LIB,
+  DT_ACTION_TYPE_IOP,
+  DT_ACTION_TYPE_SECTION,
+  // ==== all above split off chains
+  DT_ACTION_TYPE_COMMAND,
+  DT_ACTION_TYPE_WIDGET,
+  DT_ACTION_TYPE_CLOSURE
+} dt_action_type_t;
+
+typedef struct dt_action_t
+{
+  const gchar *label;
+  const gchar *label_translated;
+  dt_action_type_t type;
+  gpointer target; // widget, section, command
+  GSList *owner; // iop, lib, view, global
+  gboolean local;
+//  dt_view_type_flags_t views;
+} dt_action_t;
+
+typedef struct dt_action_widget_t
+{
+  dt_action_t *action;
+  GtkWidget *widget;
+} dt_action_widget_t;
+
+void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget);
+
 typedef struct dt_accel_t
 {
 

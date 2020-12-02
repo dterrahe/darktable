@@ -61,6 +61,7 @@
 #include "control/signal.h"
 #include "develop/blend.h"
 #include "develop/imageop.h"
+#include "gui/accelerators.h"
 #include "gui/gtk.h"
 #include "gui/guides.h"
 #include "gui/presets.h"
@@ -343,6 +344,29 @@ static void dt_codepaths_init()
     fprintf(stderr, "[dt_codepaths_init] SSE2-optimized codepath is disabled or unavailable.\n");
     fprintf(stderr,
             "[dt_codepaths_init] expect a LOT of functionality to be broken. you have been warned.\n");
+  }
+}
+
+void _print_action(GSList *action)
+{
+  if(action)
+  {
+    dt_action_t *ac = (dt_action_t *)action->data;
+    _print_action(ac->owner);
+    fprintf(stderr, "%s/", ac->label_translated);
+  }
+}
+
+void _dump_actions(GSList *action)
+{
+  while(action)
+  {
+    dt_action_t *ac = (dt_action_t *)action->data;
+    _print_action(ac->owner);
+    fprintf(stderr, "%s\n", ac->label_translated);
+    if(ac->type <= DT_ACTION_TYPE_SECTION)
+      _dump_actions(ac->target);
+    action = g_slist_next(action);
   }
 }
 
@@ -1125,6 +1149,8 @@ int dt_init(int argc, char *argv[], const gboolean init_gui, const gboolean load
       gtk_accel_map_load(keyfile);
     else
       gtk_accel_map_save(keyfile); // Save the default keymap if none is present
+
+_dump_actions(&darktable.control->actions);
 
     // initialize undo struct
     darktable.undo = dt_undo_init();
