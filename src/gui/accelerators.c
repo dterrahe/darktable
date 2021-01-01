@@ -66,7 +66,11 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
   dt_action_t *ac = owner->data;
   ac->type = DT_ACTION_TYPE_WIDGET;
   ac->local = local;
+
+  if(ac->target) g_hash_table_remove(darktable.control->widgets, ac->target);
+
   ac->target = widget;
+  g_hash_table_insert(darktable.control->widgets, widget, ac);
   // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
 
   g_strfreev(split_path);

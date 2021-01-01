@@ -1214,6 +1214,179 @@ static const char* get_axis_name(int pos)
   return AXIS_NAMES[pos];
 }
 
+typedef struct dt_shortcut_t
+{
+  guint state;
+  guint keyval;
+  guint16 hardware_keycode;
+  enum
+  {
+    DT_CLICK_NONE,
+    DT_CLICK_SINGLE,
+    DT_CLICK_DOUBLE,
+    DT_CLICK_TRIPLE
+  } click;
+  guint button;
+  enum
+  {
+    DT_SHORTCUT_SCROLL,
+    DT_SHORTCUT_HORIZONTAL,
+    DT_SHORTCUT_VERTICAL,
+    DT_SHORTCUT_LEFTRIGHT,
+    DT_SHORTCUT_UPDOWN,
+    DT_SHORTCUT_PGUPDOWN,
+    DT_SHORTCUT_MIDI
+  } move;
+} dt_shortcut_t;
+
+typedef struct dt_act_t
+{
+  enum
+  {
+    DT_ACT_CLOSURE,
+    DT_ACT_UP,
+    DT_ACT_DOWN,
+    DT_ACT_NEXT,
+    DT_ACT_PREVIOUS,
+    DT_ACT_VALUE,
+  } effect;
+  dt_action_t *action;
+  enum
+  {
+    DT_ACT_MIN,
+    DT_ACT_MAX,
+    DT_ACT_MINEST,
+    DT_ACT_MAXEST,
+    DT_ACT_NODE1,
+    DT_ACT_NODE2,
+    DT_ACT_NODE3,
+    DT_ACT_NODE4,
+    DT_ACT_NODE5,
+    DT_ACT_NODE6,
+    DT_ACT_NODE7,
+    DT_ACT_NODE8,
+  } sub; // this should be index into widget discription structure.
+
+  float speed;
+  int instance; // 0 is from prefs, >0 counting from first, <0 counting from last
+} dt_act_t;
+
+gint key_compare_func(gconstpointer key_a, gconstpointer key_b, gpointer used_fields)
+{
+  const dt_shortcut_t *a = (const dt_shortcut_t *)key_a;
+  const dt_shortcut_t *b = (const dt_shortcut_t *)key_b;
+  int used = GPOINTER_TO_INT(used_fields); // all
+
+  if(a->keyval != b->keyval  && --used)
+    return a->keyval - b->keyval;
+  else if(a->state != b->state && --used)
+    return a->state - b->state;
+  else if(a->click != b->click && --used)
+    return a->click - b->click;
+  else if(a->button != b->button && --used)
+    return a->button - b->button;
+  else if(a->move != b->move && --used)
+    return a->move - b->move;
+  else return 0;
+};
+
+static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
+{
+  dt_print(DT_DEBUG_INPUT, "  %d\n", event->type);
+
+  static dt_shortcut_t bsc = { 0 };  // building shortcut
+  static dt_act_t *bac = NULL;
+
+  switch(event->type)
+  {
+  case GDK_KEY_PRESS:
+    if(darktable.control->mapping_widget)
+    {
+      GdkEventKey *e = (GdkEventKey *)event;
+      if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
+
+      dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
+      dt_act_t *a = calloc(sizeof(dt_act_t), 1);
+      s->keyval = e->keyval;
+      a->action = darktable.control->mapping_widget;
+
+      g_tree_insert(darktable.control->keys, s, a);
+      dt_control_log(_("key %s mapped to %s"), gtk_accelerator_get_label(e->keyval, e->state), a->action->label_translated);
+
+      darktable.control->mapping_widget = NULL;
+    }
+    else
+    {
+      bsc.keyval = ((GdkEventKey *)event)->keyval;
+
+      bac = g_tree_lookup(darktable.control->keys, &bsc);
+    }
+
+    break;
+  case GDK_KEY_RELEASE:
+    memset(&bsc, 0, sizeof(bsc));
+    bac = NULL;
+
+    break;
+  case GDK_SCROLL:
+    if(bac)
+    {
+      int delta_y;
+      dt_gui_get_scroll_unit_delta((GdkEventScroll *)event, &delta_y);
+      int up = delta_y < 0;
+
+      GtkWidget *widget = bac->action->target;
+      dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
+
+      if(bhw->type == DT_BAUHAUS_SLIDER)
+      {
+        float value = dt_bauhaus_slider_get(widget);
+        float step = dt_bauhaus_slider_get_step(widget);
+        float multiplier = dt_accel_get_slider_scale_multiplier();
+
+        const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
+        if(fabsf(step*multiplier) < min_visible)
+          multiplier = min_visible / fabsf(step);
+
+        if(up)
+          dt_bauhaus_slider_set(widget, value + step * multiplier);
+        else
+          dt_bauhaus_slider_set(widget, value - step * multiplier);
+      }
+      else
+      {
+        const int currentval = dt_bauhaus_combobox_get(widget);
+
+        if(up)
+        {
+          const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
+          dt_bauhaus_combobox_set(widget, nextval);
+        }
+        else
+        {
+          const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
+          dt_bauhaus_combobox_set(widget, prevval);
+        }
+
+      }
+      g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+      dt_accel_widget_toast(widget);
+      return TRUE;
+    }
+
+    break;
+  case GDK_MOTION_NOTIFY:
+  case GDK_BUTTON_PRESS:
+  case GDK_DOUBLE_BUTTON_PRESS:
+  case GDK_TRIPLE_BUTTON_PRESS:
+  case GDK_BUTTON_RELEASE:
+  default:
+    break;
+  }
+
+  return FALSE;
+}
+
 int dt_gui_gtk_init(dt_gui_gtk_t *gui)
 {
   /* lets zero mem */
@@ -1308,6 +1481,8 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
   gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(), path);
 
   widget = dt_ui_center(darktable.gui->ui);
+
+  g_signal_connect(G_OBJECT(widget), "event", G_CALLBACK(shortcut_dispatcher), NULL);
 
   g_signal_connect(G_OBJECT(widget), "key-press-event", G_CALLBACK(key_pressed), NULL);
   g_signal_connect(G_OBJECT(widget), "configure-event", G_CALLBACK(configure), gui);

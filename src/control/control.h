@@ -163,6 +163,9 @@ typedef struct dt_control_t
   GtkTreePath *accel_remap_path;
 
   GSList actions;
+  GHashTable *widgets;
+  GTree *keys;
+  void *mapping_widget;
 
   char vimkey[256];
   int vimkey_cnt;

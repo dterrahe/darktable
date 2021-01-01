@@ -53,6 +53,10 @@ void dt_control_init(dt_control_t *s)
   s->actions.data = new_action;
   s->actions.next = NULL;
 
+  s->widgets = g_hash_table_new(NULL, NULL);
+  s->keys = NULL;
+  s->mapping_widget = NULL;
+
   memset(s->vimkey, 0, sizeof(s->vimkey));
   s->vimkey_cnt = 0;
 
