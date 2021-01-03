@@ -710,8 +710,7 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
 
       // gdk_setting_get() //double-click time
       // FIXME: deal with right-click to end either widget selection or key-press definition.
-
-
+//      if(((GdkEventButton *)event)->button == GDK_BUTTON_SECONDARY)
       // reset GTK to normal behaviourchec
       dt_control_allow_change_cursor();
       dt_control_change_cursor(GDK_LEFT_PTR);
@@ -724,27 +723,27 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
       if(event_widget)
       {
         darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
-        gtk_widget_activate(dt_ui_center(darktable.gui->ui));
       }
       else
       {
         dt_control_log(_("this element cannot be shortcutted"));
       }
       handled = TRUE;
+
       break;
     }
     case GDK_ENTER_NOTIFY:
     case GDK_LEAVE_NOTIFY:
     {
+      dt_control_allow_change_cursor();
+
       GtkWidget *event_widget = gtk_get_event_widget(event);
-      if(event_widget)
-      {
-        // TODO: find a better way to tell the user that the hovered widget has a help link
-        dt_cursor_t cursor = event->type == GDK_ENTER_NOTIFY ? GDK_HAND2 : GDK_X_CURSOR;
-        dt_control_allow_change_cursor();
-        dt_control_change_cursor(cursor);
-        dt_control_forbid_change_cursor();
-      }
+      dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
+                               && event_widget
+                               && g_hash_table_lookup(darktable.control->widgets, event_widget)
+                               ? GDK_HAND2
+                               : GDK_X_CURSOR);
+      dt_control_forbid_change_cursor();
       break;
     }
     default:

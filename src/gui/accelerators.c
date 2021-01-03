@@ -62,6 +62,9 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
 
     cur_path++;
   }
+  g_strfreev(split_path);
+
+  if(darktable.control->accel_initialising) return;
 
   dt_action_t *ac = owner->data;
   ac->type = DT_ACTION_TYPE_WIDGET;
@@ -73,7 +76,6 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
   g_hash_table_insert(darktable.control->widgets, widget, ac);
   // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
 
-  g_strfreev(split_path);
 }
 
 typedef struct _accel_iop_t

@@ -1218,7 +1218,7 @@ typedef struct dt_shortcut_t
 {
   guint state;
   guint keyval;
-  guint16 hardware_keycode;
+  guint button;
   enum
   {
     DT_CLICK_NONE,
@@ -1226,16 +1226,16 @@ typedef struct dt_shortcut_t
     DT_CLICK_DOUBLE,
     DT_CLICK_TRIPLE
   } click;
-  guint button;
   enum
   {
-    DT_SHORTCUT_SCROLL,
-    DT_SHORTCUT_HORIZONTAL,
-    DT_SHORTCUT_VERTICAL,
-    DT_SHORTCUT_LEFTRIGHT,
-    DT_SHORTCUT_UPDOWN,
-    DT_SHORTCUT_PGUPDOWN,
-    DT_SHORTCUT_MIDI
+    DT_MOVE_NONE,
+    DT_MOVE_SCROLL,
+    DT_MOVE_HORIZONTAL,
+    DT_MOVE_VERTICAL,
+    DT_MOVE_LEFTRIGHT,
+    DT_MOVE_UPDOWN,
+    DT_MOVE_PGUPDOWN,
+    DT_MOVE_MIDI
   } move;
 } dt_shortcut_t;
 
@@ -1290,96 +1290,194 @@ gint key_compare_func(gconstpointer key_a, gconstpointer key_b, gpointer used_fi
   else return 0;
 };
 
+static dt_shortcut_t bsc = { 0 };  // building shortcut
+static dt_act_t *bac = NULL;
+static GSList *pressed_keys = NULL; // list of currently pressed keys
+static enum { DT_DIRECTION_UP, DT_DIRECTION_DOWN } direction;
+
+static void define_new_mapping()
+{
+  if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
+
+  dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
+  dt_act_t *a = calloc(sizeof(dt_act_t), 1);
+  *s = bsc;
+  a->action = darktable.control->mapping_widget;
+
+  g_tree_insert(darktable.control->keys, s, a);
+  dt_control_log(_("key %s mapped to %s"), gtk_accelerator_get_label(s->keyval, s->state), a->action->label_translated);
+
+  darktable.control->mapping_widget = NULL;
+}
+
+static void process_mapping()
+{
+  bac = g_tree_lookup(darktable.control->keys, &bsc);
+
+  if(bac)
+  {
+    GtkWidget *widget = bac->action->target;
+    dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
+
+    if(bhw->type == DT_BAUHAUS_SLIDER)
+    {
+      float value = dt_bauhaus_slider_get(widget);
+      float step = dt_bauhaus_slider_get_step(widget);
+      float multiplier = dt_accel_get_slider_scale_multiplier();
+
+      const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
+      if(fabsf(step*multiplier) < min_visible)
+        multiplier = min_visible / fabsf(step);
+
+      if(direction == DT_DIRECTION_UP)
+        dt_bauhaus_slider_set(widget, value + step * multiplier);
+      else
+        dt_bauhaus_slider_set(widget, value - step * multiplier);
+    }
+    else
+    {
+      const int currentval = dt_bauhaus_combobox_get(widget);
+
+      if(direction == DT_DIRECTION_UP)
+      {
+        const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
+        dt_bauhaus_combobox_set(widget, nextval);
+      }
+      else
+      {
+        const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
+        dt_bauhaus_combobox_set(widget, prevval);
+      }
+    }
+    g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+    dt_accel_widget_toast(widget);
+  }
+}
+
+static void dispatch_single_act()
+{
+  if(pressed_keys == NULL) return;
+
+  if(darktable.control->mapping_widget)
+  {
+    bsc.keyval = GPOINTER_TO_INT(pressed_keys->data);
+    define_new_mapping();
+  }
+  else
+  {
+    for(GSList *current_key = pressed_keys; current_key; current_key = current_key->next)
+    {
+      bsc.keyval = GPOINTER_TO_INT(current_key->data);
+      process_mapping();
+    }
+  }
+}
+
 static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
 {
-  dt_print(DT_DEBUG_INPUT, "  %d\n", event->type);
+  static gdouble move_start_x = 0;
+  static gdouble move_start_y = 0;
 
-  static dt_shortcut_t bsc = { 0 };  // building shortcut
-  static dt_act_t *bac = NULL;
+//  dt_print(DT_DEBUG_INPUT, "  %d\n", event->type);
 
   switch(event->type)
   {
   case GDK_KEY_PRESS:
-    if(darktable.control->mapping_widget)
+    if(event->key.is_modifier) return FALSE;
+
+    if(!g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval)))
     {
-      GdkEventKey *e = (GdkEventKey *)event;
-      if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
+      pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(event->key.keyval));
 
-      dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
-      dt_act_t *a = calloc(sizeof(dt_act_t), 1);
-      s->keyval = e->keyval;
-      a->action = darktable.control->mapping_widget;
+      GdkDisplay *display = gdk_window_get_display(event->key.window);
+      gdk_seat_grab(gdk_display_get_default_seat(display),
+                    event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE,
+                    gdk_cursor_new_from_name(display,"all-scroll"),
+                    event, NULL, NULL);
 
-      g_tree_insert(darktable.control->keys, s, a);
-      dt_control_log(_("key %s mapped to %s"), gtk_accelerator_get_label(e->keyval, e->state), a->action->label_translated);
-
-      darktable.control->mapping_widget = NULL;
+      bsc.move = DT_MOVE_NONE;
+      bsc.state = event->key.state; // todo needs to be stored by key. You can hold ctrl-1 & alt-2 together
     }
-    else
-    {
-      bsc.keyval = ((GdkEventKey *)event)->keyval;
 
-      bac = g_tree_lookup(darktable.control->keys, &bsc);
-    }
+    // key hold should fire without key being released if --- somehow shortcut is marked as "key hold"??
+    // otherwise only fire when key is released (because we are expecting scroll or something)
 
     break;
   case GDK_KEY_RELEASE:
+    direction = DT_DIRECTION_UP;
+    GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval));
+    if(stored_key)
+    {
+      pressed_keys = g_slist_remove_link (pressed_keys, stored_key);
+      gdk_seat_ungrab(gdk_display_get_default_seat(gdk_window_get_display(event->key.window)));
+    }
+    else
+    {
+      fprintf(stderr, "[shortcut_dispatcher] released key wasn't stored\n");
+    }
+
     memset(&bsc, 0, sizeof(bsc));
     bac = NULL;
 
     break;
+  case GDK_GRAB_BROKEN:
+    break;
   case GDK_SCROLL:
-    if(bac)
     {
       int delta_y;
       dt_gui_get_scroll_unit_delta((GdkEventScroll *)event, &delta_y);
-      int up = delta_y < 0;
+      direction = delta_y < 0 ? DT_DIRECTION_UP : DT_DIRECTION_DOWN;
+    }
 
-      GtkWidget *widget = bac->action->target;
-      dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
+    bsc.move = DT_MOVE_SCROLL;
 
-      if(bhw->type == DT_BAUHAUS_SLIDER)
+    dispatch_single_act();
+    break;
+  case GDK_MOTION_NOTIFY:
+    if(!(bsc.move == DT_MOVE_HORIZONTAL || bsc.move == DT_MOVE_VERTICAL))
+    {
+      move_start_x = event->motion.x;
+      move_start_y = event->motion.y;
+      bsc.move = DT_MOVE_HORIZONTAL; // we don't know direction yet, but don't want to keep resetting start position
+    }
+
+    const gdouble min_move = 10;
+    gdouble x_move = event->motion.x - move_start_x;
+    gdouble y_move = event->motion.y - move_start_y;
+//    fprintf(stderr, "sx: %f, sy: %f, mx: %f, my: %f, ex: %f, ey: %f\n",
+//                      move_start_x, move_start_y,
+//                      x_move, y_move,
+//                      event->motion.x, event->motion.y);
+    if(fmax(fabs(x_move),fabs(y_move)) > min_move)
+    {
+      if(fabs(x_move) > fabs(y_move))
       {
-        float value = dt_bauhaus_slider_get(widget);
-        float step = dt_bauhaus_slider_get_step(widget);
-        float multiplier = dt_accel_get_slider_scale_multiplier();
-
-        const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
-        if(fabsf(step*multiplier) < min_visible)
-          multiplier = min_visible / fabsf(step);
-
-        if(up)
-          dt_bauhaus_slider_set(widget, value + step * multiplier);
-        else
-          dt_bauhaus_slider_set(widget, value - step * multiplier);
+        move_start_y = event->motion.y;
+        direction = x_move > 0
+                  ? (move_start_x += min_move, DT_DIRECTION_UP)
+                  : (move_start_x -= min_move, DT_DIRECTION_DOWN);
+        bsc.move = DT_MOVE_HORIZONTAL;
       }
       else
       {
-        const int currentval = dt_bauhaus_combobox_get(widget);
-
-        if(up)
-        {
-          const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
-          dt_bauhaus_combobox_set(widget, nextval);
-        }
-        else
-        {
-          const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
-          dt_bauhaus_combobox_set(widget, prevval);
-        }
-
+        move_start_x = event->motion.x;
+        direction = y_move < 0
+                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
+                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
+        bsc.move = DT_MOVE_VERTICAL;
       }
-      g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
-      dt_accel_widget_toast(widget);
-      return TRUE;
-    }
 
+      dispatch_single_act();
+    }
     break;
-  case GDK_MOTION_NOTIFY:
   case GDK_BUTTON_PRESS:
+    bsc.button |= 1 << event->button.button;
+    break;
   case GDK_DOUBLE_BUTTON_PRESS:
   case GDK_TRIPLE_BUTTON_PRESS:
   case GDK_BUTTON_RELEASE:
+    bsc.button &= ~(1 << event->button.button);
+    break;
   default:
     break;
   }
@@ -1482,8 +1580,6 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
 
   widget = dt_ui_center(darktable.gui->ui);
 
-  g_signal_connect(G_OBJECT(widget), "event", G_CALLBACK(shortcut_dispatcher), NULL);
-
   g_signal_connect(G_OBJECT(widget), "key-press-event", G_CALLBACK(key_pressed), NULL);
   g_signal_connect(G_OBJECT(widget), "configure-event", G_CALLBACK(configure), gui);
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw), NULL);
@@ -1542,6 +1638,7 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
   // update the profile when the window is moved. resize is already handled in configure()
   widget = dt_ui_main_window(darktable.gui->ui);
   g_signal_connect(G_OBJECT(widget), "configure-event", G_CALLBACK(window_configure), NULL);
+  g_signal_connect(G_OBJECT(widget), "event", G_CALLBACK(shortcut_dispatcher), NULL);
 
   // register keys for view switching
   dt_accel_register_global(NC_("accel", "tethering view"), GDK_KEY_t, 0);
@@ -3356,7 +3453,8 @@ GtkWidget *dt_ui_scroll_wrap(GtkWidget *w, gint min_size, char *config_str)
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw), - DT_PIXEL_APPLY_DPI(min_size));
   g_signal_connect(G_OBJECT(sw), "scroll-event", G_CALLBACK(_scroll_wrap_scroll), config_str);
-  g_signal_connect(G_OBJECT(w), "draw", G_CALLBACK(_scroll_wrap_resize), config_str);
+//  g_signal_connect(G_OBJECT(w), "draw", G_CALLBACK(_scroll_wrap_resize), config_str);
+  gtk_widget_set_size_request(sw, -1, 400);
   gtk_container_add(GTK_CONTAINER(sw), w);
 
   return sw;
