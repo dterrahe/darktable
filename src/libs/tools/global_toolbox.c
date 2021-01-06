@@ -44,7 +44,6 @@ typedef struct dt_lib_tool_preferences_t
   GtkWidget *over_culling_label, *over_culling_r0, *over_culling_r3, *over_culling_r4, *over_culling_r6,
       *over_culling_timeout, *over_culling_tt;
   gboolean disable_over_events;
-  gboolean keymap_multiple;
 } dt_lib_tool_preferences_t;
 
 /* callback for grouping button */
@@ -703,16 +702,12 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
 
   gboolean handled = FALSE;
 
+  GtkWidget *event_widget = gtk_get_event_widget(event);
+
   switch(event->type)
   {
     case GDK_BUTTON_PRESS:
     {
-
-      // FIXME: deal with right-click to end widget selection
-//      if(((GdkEventButton *)event)->button == GDK_BUTTON_SECONDARY)
-
-      GtkWidget *event_widget = gtk_get_event_widget(event);
-
       // allow opening modules to map widgets inside
       if(GTK_IS_EVENT_BOX(event_widget)) event_widget = gtk_bin_get_child(GTK_BIN(event_widget));
       if(event_widget && !strcmp(gtk_widget_get_name(event_widget), "module-header")) break;
@@ -724,11 +719,6 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
       g_signal_handlers_block_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->keymap_button), FALSE);
       g_signal_handlers_unblock_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
-
-      if(!(darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget)))
-      {
-        dt_control_log(_("this element cannot be shortcutted"));
-      }
       handled = TRUE;
 
       break;
@@ -736,18 +726,23 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
     case GDK_ENTER_NOTIFY:
     case GDK_LEAVE_NOTIFY:
     {
-      dt_control_allow_change_cursor();
+      if(event->crossing.mode == GDK_CROSSING_NORMAL || event->crossing.mode == GDK_CROSSING_UNGRAB)
+      {
+        dt_control_allow_change_cursor();
 
-      GtkWidget *event_widget = gtk_get_event_widget(event);
-      dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
-                               && event_widget
-                               && g_hash_table_lookup(darktable.control->widgets, event_widget)
-                               ? GDK_HAND2
-                               : GDK_X_CURSOR);
-      dt_control_forbid_change_cursor();
+        darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
+        fprintf(stderr, "action %p\n", darktable.control->mapping_widget);
+        dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
+                                && event_widget
+                                && darktable.control->mapping_widget
+                                ? GDK_BOX_SPIRAL
+                                : GDK_X_CURSOR);
+
+        dt_control_forbid_change_cursor();
+      }
       break;
     }
-    default:
+  default:
       break;
   }
 
@@ -763,10 +758,6 @@ static void _lib_help_button_clicked(GtkWidget *widget, gpointer user_data)
 
 static void _lib_keymap_button_clicked(GtkWidget *widget, gpointer user_data)
 {
-  dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)user_data;
-
-  d->keymap_multiple = TRUE;
-
   dt_control_change_cursor(GDK_X_CURSOR);
   dt_control_forbid_change_cursor();
   gdk_event_handler_set(_main_do_event_keymap, user_data, NULL);

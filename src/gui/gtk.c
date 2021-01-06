@@ -1310,7 +1310,7 @@ static void define_new_mapping()
   dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
   *s = bsc;
 
-  g_tree_insert(darktable.control->keys, s, darktable.control->mapping_widget);
+  g_tree_replace(darktable.control->keys, s, darktable.control->mapping_widget);
   //dt_control_log FIXME
   fprintf(stderr,_("key %s, move %d, button %d, click %d, mapped to %s\n"),
                  gtk_accelerator_get_label(s->keyval, s->state),
@@ -1369,7 +1369,7 @@ static void dispatch_single_act()
 {
   if(pressed_keys == NULL) return;
 
-  if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
+  if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, NULL);
 
   if(darktable.control->mapping_widget)
   {
