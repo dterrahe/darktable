@@ -708,10 +708,16 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
     case GDK_BUTTON_PRESS:
     {
 
-      // gdk_setting_get() //double-click time
-      // FIXME: deal with right-click to end either widget selection or key-press definition.
+      // FIXME: deal with right-click to end widget selection
 //      if(((GdkEventButton *)event)->button == GDK_BUTTON_SECONDARY)
-      // reset GTK to normal behaviourchec
+
+      GtkWidget *event_widget = gtk_get_event_widget(event);
+
+      // allow opening modules to map widgets inside
+      if(GTK_IS_EVENT_BOX(event_widget)) event_widget = gtk_bin_get_child(GTK_BIN(event_widget));
+      if(event_widget && !strcmp(gtk_widget_get_name(event_widget), "module-header")) break;
+
+      // reset GTK to normal behaviour
       dt_control_allow_change_cursor();
       dt_control_change_cursor(GDK_LEFT_PTR);
       gdk_event_handler_set((GdkEventFunc)gtk_main_do_event, NULL, NULL);
@@ -719,12 +725,7 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->keymap_button), FALSE);
       g_signal_handlers_unblock_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
 
-      GtkWidget *event_widget = gtk_get_event_widget(event);
-      if(event_widget)
-      {
-        darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
-      }
-      else
+      if(!(darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget)))
       {
         dt_control_log(_("this element cannot be shortcutted"));
       }

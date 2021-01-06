@@ -1232,11 +1232,14 @@ typedef struct dt_shortcut_t
     DT_MOVE_SCROLL,
     DT_MOVE_HORIZONTAL,
     DT_MOVE_VERTICAL,
+    DT_MOVE_DIAGUP,
+    DT_MOVE_DIAGDOWN,
     DT_MOVE_LEFTRIGHT,
     DT_MOVE_UPDOWN,
     DT_MOVE_PGUPDOWN,
     DT_MOVE_MIDI
   } move;
+  dt_view_type_flags_t views;
 } dt_shortcut_t;
 
 typedef struct dt_act_t
@@ -1271,22 +1274,27 @@ typedef struct dt_act_t
   int instance; // 0 is from prefs, >0 counting from first, <0 counting from last
 } dt_act_t;
 
-gint key_compare_func(gconstpointer key_a, gconstpointer key_b, gpointer used_fields)
+gint key_compare_func(gconstpointer key_a, gconstpointer key_b, gpointer user_data)
 {
   const dt_shortcut_t *a = (const dt_shortcut_t *)key_a;
   const dt_shortcut_t *b = (const dt_shortcut_t *)key_b;
-  int used = GPOINTER_TO_INT(used_fields); // all
 
-  if(a->keyval != b->keyval  && --used)
+  if(a->keyval != b->keyval)
     return a->keyval - b->keyval;
-  else if(a->state != b->state && --used)
+  else if(a->state != b->state)
     return a->state - b->state;
-  else if(a->click != b->click && --used)
+  else if(a->click != b->click)
     return a->click - b->click;
-  else if(a->button != b->button && --used)
+  else if(a->button != b->button)
     return a->button - b->button;
-  else if(a->move != b->move && --used)
+  else if(a->move != b->move)
     return a->move - b->move;
+  else if(a->views != b->views)
+  // FIXME: global (views = 0) equates to any view.
+  // If multiple views (for libs) -> multiple nodes need to be inserted in tree
+  // Maybe add "DT_VIEW_MULTI" bit so we know this is part of a set (so others also need updating/removing)
+  // don't include this bit in comparison.
+    return a->views - b->views;
   else return 0;
 };
 
@@ -1294,18 +1302,21 @@ static dt_shortcut_t bsc = { 0 };  // building shortcut
 static dt_act_t *bac = NULL;
 static GSList *pressed_keys = NULL; // list of currently pressed keys
 static enum { DT_DIRECTION_UP, DT_DIRECTION_DOWN } direction;
+static guint double_click_timeout_source = 0;
 
 static void define_new_mapping()
 {
-  if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
-
   dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
   dt_act_t *a = calloc(sizeof(dt_act_t), 1);
   *s = bsc;
   a->action = darktable.control->mapping_widget;
 
   g_tree_insert(darktable.control->keys, s, a);
-  dt_control_log(_("key %s mapped to %s"), gtk_accelerator_get_label(s->keyval, s->state), a->action->label_translated);
+  //dt_control_log FIXME
+  fprintf(stderr,_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+                 gtk_accelerator_get_label(s->keyval, s->state),
+                 s->move, s->button, s->click,
+                 a->action->label_translated);
 
   darktable.control->mapping_widget = NULL;
 }
@@ -1358,6 +1369,8 @@ static void dispatch_single_act()
 {
   if(pressed_keys == NULL) return;
 
+  if(!darktable.control->keys) darktable.control->keys = g_tree_new_full(key_compare_func, 0, g_free, g_free);
+
   if(darktable.control->mapping_widget)
   {
     bsc.keyval = GPOINTER_TO_INT(pressed_keys->data);
@@ -1371,6 +1384,21 @@ static void dispatch_single_act()
       process_mapping();
     }
   }
+}
+
+static gboolean _double_click_timeout(gpointer user_data)
+{
+  // just to test FIXME
+  int saved_button = bsc.button;
+  bsc.button = GPOINTER_TO_INT(user_data);
+  direction = DT_DIRECTION_UP;
+  dispatch_single_act();
+
+  bsc.click = DT_CLICK_NONE;
+  bsc.button = saved_button;
+  double_click_timeout_source = 0;
+
+  return FALSE;
 }
 
 static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
@@ -1387,16 +1415,31 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
 
     if(!g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval)))
     {
+      if(double_click_timeout_source)
+      {
+        bsc.click++;
+        g_source_remove(double_click_timeout_source);
+        double_click_timeout_source = 0;
+      }
+      else
+      {
+        // Single/double/triple "click" without button is not mouse click but key click.
+        bsc.click = DT_CLICK_SINGLE;
+      }
+
       pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(event->key.keyval));
 
-      GdkDisplay *display = gdk_window_get_display(event->key.window);
-      gdk_seat_grab(gdk_display_get_default_seat(display),
+      gdk_seat_grab(gdk_event_get_seat (event),
                     event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE,
-                    gdk_cursor_new_from_name(display,"all-scroll"),
+                    gdk_cursor_new_from_name(gdk_window_get_display(event->key.window),"all-scroll"),
                     event, NULL, NULL);
 
+//      bsc.click = DT_CLICK_NONE;
       bsc.move = DT_MOVE_NONE;
-      bsc.state = event->key.state; // todo needs to be stored by key. You can hold ctrl-1 & alt-2 together
+      bsc.state = event->key.state & gtk_accelerator_get_default_mod_mask(); // todo needs to be stored by key. You can hold ctrl-1 & alt-2 together
+
+      // return TRUE; // FIXME: does this matter? how about other events? grab seems to make a difference.
+      // look up if any combination of this key is mapped, or if we are in the mapping process.
     }
 
     // key hold should fire without key being released if --- somehow shortcut is marked as "key hold"??
@@ -1410,6 +1453,16 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
     {
       pressed_keys = g_slist_remove_link (pressed_keys, stored_key);
       gdk_seat_ungrab(gdk_display_get_default_seat(gdk_window_get_display(event->key.window)));
+
+//FIXME click none not true and key already removed...
+      if(bsc.click == DT_CLICK_NONE && bsc.move == DT_MOVE_NONE && !double_click_timeout_source) // FIXME shouldn't be needed; we are receiving presses and releases twice???
+      {
+        int delay = 0;
+        g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+        fprintf(stderr, "timer ");
+        // key already removed from list...
+        double_click_timeout_source = g_timeout_add(delay, _double_click_timeout, 0);
+      }
     }
     else
     {
@@ -1450,7 +1503,7 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
 //                      event->motion.x, event->motion.y);
     if(fmax(fabs(x_move),fabs(y_move)) > min_move)
     {
-      if(fabs(x_move) > fabs(y_move))
+      if(fabs(x_move) > 2 * fabs(y_move))
       {
         move_start_y = event->motion.y;
         direction = x_move > 0
@@ -1458,7 +1511,7 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
                   : (move_start_x -= min_move, DT_DIRECTION_DOWN);
         bsc.move = DT_MOVE_HORIZONTAL;
       }
-      else
+      else if(fabs(y_move) > 2 * fabs(x_move))
       {
         move_start_x = event->motion.x;
         direction = y_move < 0
@@ -1466,23 +1519,52 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
                   : (move_start_y += min_move, DT_DIRECTION_DOWN);
         bsc.move = DT_MOVE_VERTICAL;
       }
+      else
+      {
+        move_start_x += min_move * x_move / fabs(y_move);
+        direction = y_move < 0
+                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
+                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
+        bsc.move = y_move * x_move < 0 ? DT_MOVE_DIAGUP : DT_MOVE_DIAGDOWN;
+      }
 
       dispatch_single_act();
     }
     break;
   case GDK_BUTTON_PRESS:
+    if(double_click_timeout_source) g_source_remove(double_click_timeout_source);
+    double_click_timeout_source = 0;
     bsc.button |= 1 << event->button.button;
+    bsc.click = DT_CLICK_SINGLE;
     break;
   case GDK_DOUBLE_BUTTON_PRESS:
+    bsc.click = DT_CLICK_DOUBLE;
+    break;
   case GDK_TRIPLE_BUTTON_PRESS:
+    bsc.click = DT_CLICK_TRIPLE;
+    break;
   case GDK_BUTTON_RELEASE:
+    // if some action done while button held -> just clear. Otherwise double-click-delay + possibly action
+//    bsc.click = DT_CLICK_NONE; // or maybe set timer to fire action (rather than move) if no other click within that time
+
+    // maybe; check if there's a shortcut defined for double/triple (could be fallback?); if not -> no delay
+    // FIXME: only if no action taken yet. (so not after button+move)
+    // maybe even action on PRESS rather than RELEASE
+    if(bsc.move == DT_MOVE_NONE && !double_click_timeout_source) // FIXME shouldn't be needed; we are receiving presses and releases twice???
+    {
+      int delay = 0;
+      g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+      fprintf(stderr, "timer ");
+      double_click_timeout_source = g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.button));
+    }
     bsc.button &= ~(1 << event->button.button);
+    bsc.move = DT_MOVE_NONE;
     break;
   default:
     break;
   }
 
-  return FALSE;
+  return FALSE; // is return type used? doesn't seem so (maybe because of grab)
 }
 
 int dt_gui_gtk_init(dt_gui_gtk_t *gui)
@@ -3324,13 +3406,9 @@ static void notebook_size_callback(GtkNotebook *notebook, GdkRectangle *allocati
 
 void dt_ui_notebook_clear(GtkNotebook *notebook)
 {
-  gint notebook_pages = gtk_notebook_get_n_pages(notebook);
-  if(notebook_pages >= 2)
+  if(gtk_notebook_get_n_pages(notebook) >= 2)
     g_signal_handlers_disconnect_by_func(G_OBJECT(notebook), G_CALLBACK(notebook_size_callback), NULL);
-  for(gint tabs = notebook_pages; tabs > 0; --tabs)
-  {
-    gtk_notebook_remove_page(notebook, tabs - 1);
-  }
+  gtk_container_foreach(GTK_CONTAINER(notebook), (GtkCallback)gtk_widget_destroy, NULL);
 }
 
 GtkWidget *dt_ui_notebook_page(GtkNotebook *notebook, const char *text, const char *tooltip)
