@@ -700,8 +700,6 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
 {
   GtkWidget *event_widget = gtk_get_event_widget(event);
 
-  dt_print(DT_DEBUG_INPUT, "  [_main_do_event_keymap] %d\n", event->type);
-
   switch(event->type)
   {
   case GDK_ENTER_NOTIFY:
@@ -709,7 +707,6 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
     if(event->crossing.mode == GDK_CROSSING_NORMAL || event->crossing.mode == GDK_CROSSING_UNGRAB)
     {
       darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
-//        fprintf(stderr, "action %p\n", darktable.control->mapping_widget);
 
       dt_control_allow_change_cursor();
       dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
