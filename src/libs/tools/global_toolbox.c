@@ -698,55 +698,54 @@ static void _main_do_event_help(GdkEvent *event, gpointer data)
 
 static void _main_do_event_keymap(GdkEvent *event, gpointer data)
 {
-  dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)data;
-
-  gboolean handled = FALSE;
-
   GtkWidget *event_widget = gtk_get_event_widget(event);
+
+  dt_print(DT_DEBUG_INPUT, "  [_main_do_event_keymap] %d\n", event->type);
 
   switch(event->type)
   {
-    case GDK_BUTTON_PRESS:
+  case GDK_ENTER_NOTIFY:
+  case GDK_LEAVE_NOTIFY:
+    if(event->crossing.mode == GDK_CROSSING_NORMAL || event->crossing.mode == GDK_CROSSING_UNGRAB)
     {
-      // allow opening modules to map widgets inside
-      if(GTK_IS_EVENT_BOX(event_widget)) event_widget = gtk_bin_get_child(GTK_BIN(event_widget));
-      if(event_widget && !strcmp(gtk_widget_get_name(event_widget), "module-header")) break;
+      darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
+//        fprintf(stderr, "action %p\n", darktable.control->mapping_widget);
 
-      // reset GTK to normal behaviour
       dt_control_allow_change_cursor();
-      dt_control_change_cursor(GDK_LEFT_PTR);
-      gdk_event_handler_set((GdkEventFunc)gtk_main_do_event, NULL, NULL);
-      g_signal_handlers_block_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->keymap_button), FALSE);
-      g_signal_handlers_unblock_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
-      handled = TRUE;
-
-      break;
+      dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
+                              && event_widget
+                              && darktable.control->mapping_widget
+                              ? GDK_BOX_SPIRAL
+                              : GDK_X_CURSOR);
+      dt_control_forbid_change_cursor();
     }
-    case GDK_ENTER_NOTIFY:
-    case GDK_LEAVE_NOTIFY:
-    {
-      if(event->crossing.mode == GDK_CROSSING_NORMAL || event->crossing.mode == GDK_CROSSING_UNGRAB)
-      {
-        dt_control_allow_change_cursor();
-
-        darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
-        fprintf(stderr, "action %p\n", darktable.control->mapping_widget);
-        dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
-                                && event_widget
-                                && darktable.control->mapping_widget
-                                ? GDK_BOX_SPIRAL
-                                : GDK_X_CURSOR);
-
-        dt_control_forbid_change_cursor();
-      }
+    break;
+  case GDK_BUTTON_PRESS:
+    if(gdk_display_device_is_grabbed(gdk_window_get_display(event->button.window), event->button.device))
       break;
-    }
+
+    // allow opening modules to map widgets inside
+    if(GTK_IS_EVENT_BOX(event_widget)) event_widget = gtk_bin_get_child(GTK_BIN(event_widget));
+    if(event_widget && !strcmp(gtk_widget_get_name(event_widget), "module-header"))
+      break;
+
+    // reset GTK to normal behaviour
+    dt_control_allow_change_cursor();
+    dt_control_change_cursor(GDK_LEFT_PTR);
+
+    dt_lib_tool_preferences_t *d = (dt_lib_tool_preferences_t *)data;
+    g_signal_handlers_block_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->keymap_button), FALSE);
+    g_signal_handlers_unblock_by_func(d->keymap_button, _lib_keymap_button_clicked, d);
+
+    gdk_event_handler_set((GdkEventFunc)gtk_main_do_event, NULL, NULL);
+
+    return;
   default:
-      break;
+    break;
   }
 
-  if(!handled) gtk_main_do_event(event);
+  gtk_main_do_event(event);
 }
 
 static void _lib_help_button_clicked(GtkWidget *widget, gpointer user_data)

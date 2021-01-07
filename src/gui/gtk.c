@@ -1311,7 +1311,11 @@ static void define_new_mapping()
   *s = bsc;
 
   g_tree_replace(darktable.control->keys, s, darktable.control->mapping_widget);
-  //dt_control_log FIXME
+
+  dt_control_log(_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+                 gtk_accelerator_get_label(s->keyval, s->state),
+                 s->move, s->button, s->click,
+                 ((dt_action_t *)darktable.control->mapping_widget)->label_translated);
   fprintf(stderr,_("key %s, move %d, button %d, click %d, mapped to %s\n"),
                  gtk_accelerator_get_label(s->keyval, s->state),
                  s->move, s->button, s->click,
@@ -1406,7 +1410,7 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
   static gdouble move_start_x = 0;
   static gdouble move_start_y = 0;
 
-//  dt_print(DT_DEBUG_INPUT, "  %d\n", event->type);
+  dt_print(DT_DEBUG_INPUT, "  [shortcut_dispatcher] %d\n", event->type);
 
   switch(event->type)
   {
@@ -1428,11 +1432,11 @@ static gboolean shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user
       }
 
       pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(event->key.keyval));
-
+      GdkCursor *cursor = gdk_cursor_new_from_name(gdk_window_get_display(event->key.window), "all-scroll");
       gdk_seat_grab(gdk_event_get_seat (event),
-                    event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE,
-                    gdk_cursor_new_from_name(gdk_window_get_display(event->key.window),"all-scroll"),
+                    event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE, cursor,
                     event, NULL, NULL);
+      g_object_unref(cursor);
 
 //      bsc.click = DT_SHORTCUT_CLICK_NONE;
       bsc.move = DT_SHORTCUT_MOVE_NONE;
