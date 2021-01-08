@@ -390,6 +390,7 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
                                            GtkTooltip *tooltip, gpointer user_data)
 {
   gchar *shortcut_text = NULL;
+
   for(GSequenceIter *iter = g_sequence_get_begin_iter(darktable.control->keys);
       !g_sequence_iter_is_end(iter);
       iter = g_sequence_iter_next(iter))
@@ -399,24 +400,37 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
     {
       gchar *key_name = gtk_accelerator_get_label(s->keyval, s->state);
 
-      if(shortcut_text)
-      {
-        gchar *tmp = shortcut_text;
-        shortcut_text = g_strdup_printf("%s (%s)", shortcut_text, key_name);
-        g_free(tmp);
-        g_free(key_name);
-      }
-      else
-        shortcut_text = key_name;
+      const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal up"), N_("diagonal down") };
+      const char *click_string[] = { "", "", N_("double"), N_("triple") };
+
+      gchar *tmp = shortcut_text;
+      shortcut_text = g_strdup_printf("%s\nshortcut: %s%s%s%s%s %s %s %s",
+                                      shortcut_text ? shortcut_text : "", key_name,
+                                      s->move ? " " : "", _(move_string[s->move]),
+                                      s->click ? " " : "", _(click_string[s->click]),
+                                      s->button & (1 << GDK_BUTTON_PRIMARY) ? _("left") : "",
+                                      s->button & (1 << GDK_BUTTON_MIDDLE) ? _("middle") : "",
+                                      s->button & (1 << GDK_BUTTON_SECONDARY) ? _("right") : "");
+      g_free(tmp);
+      g_free(key_name);
     }
   }
 
-  char *text = gtk_widget_get_tooltip_text(widget);
+  gchar *markup_text = gtk_widget_get_tooltip_markup(widget);
 
+  if(shortcut_text)
+  {
+    gchar *shortcut_escaped = g_markup_escape_text(shortcut_text, -1);
+    gchar *original_markup = markup_text;
+    markup_text = g_strdup_printf("%s<span style='italic' foreground='red'>%s</span>", original_markup, shortcut_escaped);
+    g_free(original_markup);
+    g_free(shortcut_escaped);
+    g_free(shortcut_text);
+  }
 
-  gtk_tooltip_set_text(tooltip, shortcut_text);
-  g_free(text);
-  g_free(shortcut_text);
+  gtk_tooltip_set_markup(tooltip, markup_text);
+  g_free(markup_text);
+
   return TRUE;
 }
 
@@ -466,6 +480,7 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
 
   ac->target = widget;
   g_hash_table_insert(darktable.control->widgets, widget, ac);
+  // FIXME set destroy callback to remove widget from hashtable again
   // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
 
   g_signal_connect(G_OBJECT(widget), "query-tooltip", G_CALLBACK(_shortcut_tooltip_callback), NULL);
