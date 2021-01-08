@@ -54,6 +54,8 @@ typedef struct dt_action_widget_t
   GtkWidget *widget;
 } dt_action_widget_t;
 
+gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data);
+
 void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget);
 
 typedef struct dt_accel_t

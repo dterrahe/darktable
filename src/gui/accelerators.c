@@ -28,6 +28,398 @@
 #include <assert.h>
 #include <gtk/gtk.h>
 
+typedef struct dt_shortcut_t
+{
+  guint state;
+  guint keyval;
+  guint button;
+  enum
+  {
+    DT_SHORTCUT_CLICK_NONE,
+    DT_SHORTCUT_CLICK_SINGLE,
+    DT_SHORTCUT_CLICK_DOUBLE,
+    DT_SHORTCUT_CLICK_TRIPLE
+  } click;
+  enum
+  {
+    DT_SHORTCUT_MOVE_NONE,
+    DT_SHORTCUT_MOVE_SCROLL,
+    DT_SHORTCUT_MOVE_HORIZONTAL,
+    DT_SHORTCUT_MOVE_VERTICAL,
+    DT_SHORTCUT_MOVE_DIAGUP,
+    DT_SHORTCUT_MOVE_DIAGDOWN,
+    DT_SHORTCUT_MOVE_LEFTRIGHT,
+    DT_SHORTCUT_MOVE_UPDOWN,
+    DT_SHORTCUT_MOVE_PGUPDOWN,
+    DT_SHORTCUT_MOVE_MIDI
+  } move;
+  dt_view_type_flags_t views;
+
+  enum // these should be defined in widget type block as strings and here indexed
+  {
+    DT_SHORTCUT_EFFECT_CLOSURE,
+    DT_SHORTCUT_EFFECT_UP,
+    DT_SHORTCUT_EFFECT_DOWN,
+    DT_SHORTCUT_EFFECT_NEXT,
+    DT_SHORTCUT_EFFECT_PREVIOUS,
+    DT_SHORTCUT_EFFECT_VALUE,
+    DT_SHORTCUT_EFFECT_RESET,
+    DT_SHORTCUT_EFFECT_END,
+    DT_SHORTCUT_EFFECT_BEGIN,
+  } effect;
+  enum // these should be defined in widget type block as strings and here indexed
+  {
+    DT_SHORTCUT_SUB_MIN,
+    DT_SHORTCUT_SUB_MAX,
+    DT_SHORTCUT_SUB_MINEST,
+    DT_SHORTCUT_SUB_MAXEST,
+    DT_SHORTCUT_SUB_NODE1, // contrast equaliser for example. Node value or node x-axis position can be moved
+    DT_SHORTCUT_SUB_NODE2,
+    DT_SHORTCUT_SUB_NODE3,
+    DT_SHORTCUT_SUB_NODE4,
+    DT_SHORTCUT_SUB_NODE5,
+    DT_SHORTCUT_SUB_NODE6,
+    DT_SHORTCUT_SUB_NODE7,
+    DT_SHORTCUT_SUB_NODE8,
+  } sub; // this should be index into widget discription structure.
+  float speed;
+  int instance; // 0 is from prefs, >0 counting from first, <0 counting from last
+  dt_action_t *action;
+} dt_shortcut_t;
+
+gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, gpointer user_data)
+{
+  const dt_shortcut_t *a = (const dt_shortcut_t *)shortcut_a;
+  const dt_shortcut_t *b = (const dt_shortcut_t *)shortcut_b;
+
+  if(a->keyval != b->keyval)
+    return a->keyval - b->keyval;
+  else if(a->state != b->state)
+    return a->state - b->state;
+  else if(a->click != b->click)
+    return a->click - b->click;
+  else if(a->button != b->button)
+    return a->button - b->button;
+  else if(a->move != b->move)
+    return a->move - b->move;
+  else if(a->views != b->views)
+  // FIXME: global (views = 0) equates to any view.
+  // If multiple views (for libs) -> multiple nodes need to be inserted in tree
+  // Maybe add "DT_VIEW_MULTI" bit so we know this is part of a set (so others also need updating/removing)
+  // don't include this bit in comparison.
+  // actually, when part of multi group, put whole original group in views field (shifted to left by enough bits)
+  // so if views = 1+2+8 (1011), create 3 shortcuts (1011 0000 0001, 1011 0000 0010, 1011 0000 1000) to easier find
+  // the others that need updating/deleting. But ignore in comparison.
+    return a->views - b->views;
+  else return 0;
+};
+
+static dt_shortcut_t bsc = { 0 };  // building shortcut
+static GSList *pressed_keys = NULL; // list of currently pressed keys
+static guint pressed_button = 0;
+static enum { DT_DIRECTION_UP, DT_DIRECTION_DOWN } direction;
+
+static void define_new_mapping()
+{
+  dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
+  *s = bsc;
+  s->action = darktable.control->mapping_widget;
+
+  GSequenceIter *existing = g_sequence_lookup(darktable.control->keys, s, shortcut_compare_func, 0 /*view*/);
+
+  if(!existing)
+    g_sequence_insert_sorted(darktable.control->keys, s, shortcut_compare_func, 0 /*view*/);
+  else
+  {
+    // FIXME ask confirmation
+    dt_shortcut_t *e = g_sequence_get(existing);
+    fprintf(stderr,_("replacing key %s, move %d, button %d, click %d, mapped to %s\n"),
+                  gtk_accelerator_get_label(e->keyval, e->state),
+                  e->move, e->button, e->click, e->action->label_translated);
+    g_sequence_set(existing, s);
+  }
+
+  dt_control_log(_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+                 gtk_accelerator_get_label(s->keyval, s->state),
+                 s->move, s->button, s->click,
+                 ((dt_action_t *)darktable.control->mapping_widget)->label_translated);
+  fprintf(stderr,_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+                 gtk_accelerator_get_label(s->keyval, s->state),
+                 s->move, s->button, s->click,
+                 ((dt_action_t *)darktable.control->mapping_widget)->label_translated);
+
+  darktable.control->mapping_widget = NULL;
+}
+
+static void process_mapping()
+{
+  dt_shortcut_t *bac = NULL;
+
+  GSequenceIter *existing = g_sequence_lookup(darktable.control->keys, &bsc, shortcut_compare_func, 0 /*view*/);
+  if(existing)
+  {
+    bac = g_sequence_get(existing);
+    GtkWidget *widget = bac->action->target;
+    dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
+
+    if(bhw->type == DT_BAUHAUS_SLIDER)
+    {
+      float value = dt_bauhaus_slider_get(widget);
+      float step = dt_bauhaus_slider_get_step(widget);
+      float multiplier = dt_accel_get_slider_scale_multiplier();
+
+      const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
+      if(fabsf(step*multiplier) < min_visible)
+        multiplier = min_visible / fabsf(step);
+
+      if(direction == DT_DIRECTION_UP)
+        dt_bauhaus_slider_set(widget, value + step * multiplier);
+      else
+        dt_bauhaus_slider_set(widget, value - step * multiplier);
+    }
+    else
+    {
+      const int currentval = dt_bauhaus_combobox_get(widget);
+
+      if(direction == DT_DIRECTION_UP)
+      {
+        const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
+        dt_bauhaus_combobox_set(widget, nextval);
+      }
+      else
+      {
+        const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
+        dt_bauhaus_combobox_set(widget, prevval);
+      }
+    }
+    g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+    dt_accel_widget_toast(widget);
+  }
+}
+
+static void dispatch_single_act()
+{
+  if(darktable.control->mapping_widget)
+  {
+    define_new_mapping();
+  }
+  else
+  {
+    if(pressed_keys)
+      for(GSList *current_key = pressed_keys; current_key; current_key = current_key->next)
+      {
+        bsc.keyval = GPOINTER_TO_INT(current_key->data);
+        process_mapping();
+      }
+    else
+      process_mapping();
+  }
+}
+
+static gboolean _double_click_timeout(gpointer user_data)
+{
+  if(bsc.click == GPOINTER_TO_INT(user_data))
+  {
+    direction = DT_DIRECTION_UP;
+    dispatch_single_act();
+
+    bsc.click = DT_SHORTCUT_CLICK_NONE;
+
+    if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+  }
+
+  return FALSE;
+}
+
+gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
+{
+  static gdouble move_start_x = 0;
+  static gdouble move_start_y = 0;
+
+//  dt_print(DT_DEBUG_INPUT, "  [shortcut_dispatcher] %d\n", event->type);
+
+  if(pressed_keys == NULL && event->type != GDK_KEY_PRESS) return FALSE;
+
+  switch(event->type)
+  {
+  case GDK_KEY_PRESS:
+    if(event->key.is_modifier) return FALSE;
+
+    if(!g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval)))
+    {
+      bsc.keyval = event->key.keyval;
+      pressed_button = 0;
+      bsc.button = 0;
+      bsc.move = DT_SHORTCUT_MOVE_NONE;
+
+      if(!pressed_keys)
+      {
+        bsc.state = event->key.state & gtk_accelerator_get_default_mod_mask(); // FIXME shift+num keys needs special treatment?
+        bsc.click++; // only count number of double clicks on first key
+
+        GdkCursor *cursor = gdk_cursor_new_from_name(gdk_window_get_display(event->key.window), "all-scroll");
+        gdk_seat_grab(gdk_event_get_seat(event),
+                      event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE, cursor,
+                      event, NULL, NULL);
+        g_object_unref(cursor);
+      }
+
+      pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(event->key.keyval));
+    }
+    // key hold (CTRL-W for example) should fire without key being released if shortcut is marked as "key hold" (or something)??
+    // otherwise only fire when key is released (because we are expecting scroll or something)
+
+    break;
+  case GDK_KEY_RELEASE:
+    if(event->key.is_modifier) return FALSE;
+
+    direction = DT_DIRECTION_UP;
+
+    GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval));
+    if(stored_key)
+    {
+      pressed_keys = g_slist_remove_link(pressed_keys, stored_key);
+
+      if(!pressed_keys)
+      {
+        if(!bsc.button && bsc.move == DT_SHORTCUT_MOVE_NONE)
+        {
+          int delay = 0;
+          g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+          g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
+        }
+        else
+        {
+          bsc.click = DT_SHORTCUT_CLICK_NONE;
+          gdk_seat_ungrab(gdk_display_get_default_seat(gdk_window_get_display(event->key.window)));
+        }
+      }
+    }
+    else
+    {
+      fprintf(stderr, "[shortcut_dispatcher] released key wasn't stored\n");
+    }
+
+    break;
+  case GDK_GRAB_BROKEN:
+    if(event->grab_broken.implicit) break;
+    break;
+  case GDK_SCROLL:
+    {
+      int delta_y;
+      dt_gui_get_scroll_unit_delta((GdkEventScroll *)event, &delta_y);
+      direction = delta_y < 0 ? DT_DIRECTION_UP : DT_DIRECTION_DOWN;
+    }
+
+    bsc.move = DT_SHORTCUT_MOVE_SCROLL;
+
+    dispatch_single_act();
+    break;
+  case GDK_MOTION_NOTIFY:
+    if(!(bsc.move == DT_SHORTCUT_MOVE_HORIZONTAL || bsc.move == DT_SHORTCUT_MOVE_VERTICAL))
+    {
+      move_start_x = event->motion.x;
+      move_start_y = event->motion.y;
+      bsc.move = DT_SHORTCUT_MOVE_HORIZONTAL; // set fake direction so the start position doesn't keep resetting
+    }
+
+    const gdouble min_move = 10;
+    gdouble x_move = event->motion.x - move_start_x;
+    gdouble y_move = event->motion.y - move_start_y;
+    if(fmax(fabs(x_move),fabs(y_move)) > min_move)
+    {
+      if(fabs(x_move) > 2 * fabs(y_move))
+      {
+        move_start_y = event->motion.y;
+        direction = x_move > 0
+                  ? (move_start_x += min_move, DT_DIRECTION_UP)
+                  : (move_start_x -= min_move, DT_DIRECTION_DOWN);
+        bsc.move = DT_SHORTCUT_MOVE_HORIZONTAL;
+      }
+      else if(fabs(y_move) > 2 * fabs(x_move))
+      {
+        move_start_x = event->motion.x;
+        direction = y_move < 0
+                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
+                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
+        bsc.move = DT_SHORTCUT_MOVE_VERTICAL;
+      }
+      else
+      {
+        move_start_x += min_move * x_move / fabs(y_move);
+        direction = y_move < 0
+                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
+                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
+        bsc.move = y_move * x_move < 0 ? DT_SHORTCUT_MOVE_DIAGUP : DT_SHORTCUT_MOVE_DIAGDOWN;
+      }
+
+      dispatch_single_act();
+    }
+    break;
+  case GDK_BUTTON_PRESS:
+    pressed_button |= 1 << event->button.button;
+    bsc.button = pressed_button;
+    bsc.click = DT_SHORTCUT_CLICK_SINGLE;
+    bsc.move = DT_SHORTCUT_MOVE_NONE;
+    break;
+  case GDK_DOUBLE_BUTTON_PRESS:
+    bsc.click = DT_SHORTCUT_CLICK_DOUBLE;
+    break;
+  case GDK_TRIPLE_BUTTON_PRESS:
+    bsc.click = DT_SHORTCUT_CLICK_TRIPLE;
+    break;
+  case GDK_BUTTON_RELEASE:
+    // maybe; check if there's a shortcut defined for double/triple (could be fallback?); if not -> no delay
+    // maybe even action on PRESS rather than RELEASE
+    if(bsc.move == DT_SHORTCUT_MOVE_NONE) // FIXME be careful!!; we are receiving presses and releases twice!?!
+    {
+      int delay = 0;
+      g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+      g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
+    }
+    pressed_button &= ~(1 << event->button.button);
+    break;
+  default:
+    break;
+  }
+
+  return FALSE; // is return type used? doesn't seem so (maybe because of grab)
+}
+
+static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
+                                           GtkTooltip *tooltip, gpointer user_data)
+{
+  gchar *shortcut_text = NULL;
+  for(GSequenceIter *iter = g_sequence_get_begin_iter(darktable.control->keys);
+      !g_sequence_iter_is_end(iter);
+      iter = g_sequence_iter_next(iter))
+  {
+    dt_shortcut_t *s = g_sequence_get(iter);
+    if(s->action->target == widget)
+    {
+      gchar *key_name = gtk_accelerator_get_label(s->keyval, s->state);
+
+      if(shortcut_text)
+      {
+        gchar *tmp = shortcut_text;
+        shortcut_text = g_strdup_printf("%s (%s)", shortcut_text, key_name);
+        g_free(tmp);
+        g_free(key_name);
+      }
+      else
+        shortcut_text = key_name;
+    }
+  }
+
+  char *text = gtk_widget_get_tooltip_text(widget);
+
+
+  gtk_tooltip_set_text(tooltip, shortcut_text);
+  g_free(text);
+  g_free(shortcut_text);
+  return TRUE;
+}
+
 void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
 {
   // add to module_so actions list
@@ -76,6 +468,7 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
   g_hash_table_insert(darktable.control->widgets, widget, ac);
   // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
 
+  g_signal_connect(G_OBJECT(widget), "query-tooltip", G_CALLBACK(_shortcut_tooltip_callback), NULL);
 }
 
 typedef struct _accel_iop_t
@@ -595,6 +988,9 @@ void dt_accel_connect_button_lib(dt_lib_module_t *module, const gchar *path, Gtk
 
   if(gtk_widget_get_has_tooltip(button))
     g_signal_connect(G_OBJECT(button), "query-tooltip", G_CALLBACK(_tooltip_callback), NULL);
+
+
+  ////// FIXME
 }
 
 void dt_accel_connect_button_lib_as_global(dt_lib_module_t *module, const gchar *path, GtkWidget *button)

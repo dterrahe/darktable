@@ -164,7 +164,7 @@ typedef struct dt_control_t
 
   GSList actions;
   GHashTable *widgets;
-  GTree *keys;
+  GSequence *keys;
   void *mapping_widget;
 
   char vimkey[256];
