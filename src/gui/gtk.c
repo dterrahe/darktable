@@ -3053,9 +3053,13 @@ static void notebook_size_callback(GtkNotebook *notebook, GdkRectangle *allocati
 
 void dt_ui_notebook_clear(GtkNotebook *notebook)
 {
-  if(gtk_notebook_get_n_pages(notebook) >= 2)
+  gint notebook_pages = gtk_notebook_get_n_pages(notebook);
+  if(notebook_pages >= 2)
     g_signal_handlers_disconnect_by_func(G_OBJECT(notebook), G_CALLBACK(notebook_size_callback), NULL);
-  gtk_container_foreach(GTK_CONTAINER(notebook), (GtkCallback)gtk_widget_destroy, NULL);
+  for(gint tabs = notebook_pages; tabs > 0; --tabs)
+  {
+    gtk_notebook_remove_page(notebook, tabs - 1);
+  }
 }
 
 GtkWidget *dt_ui_notebook_page(GtkNotebook *notebook, const char *text, const char *tooltip)
@@ -3179,7 +3183,6 @@ GtkWidget *dt_ui_scroll_wrap(GtkWidget *w, gint min_size, char *config_str)
   gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw), - DT_PIXEL_APPLY_DPI(min_size));
   g_signal_connect(G_OBJECT(sw), "scroll-event", G_CALLBACK(_scroll_wrap_scroll), config_str);
   g_signal_connect(G_OBJECT(w), "draw", G_CALLBACK(_scroll_wrap_resize), config_str);
-  gtk_widget_set_size_request(sw, -1, 400);
   gtk_container_add(GTK_CONTAINER(sw), w);
 
   return sw;
