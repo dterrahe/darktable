@@ -123,7 +123,48 @@ static void define_new_mapping()
 {
   dt_shortcut_t *s = calloc(sizeof(dt_shortcut_t), 1);
   *s = bsc;
-  s->action = darktable.control->mapping_widget;
+  dt_action_t *action = g_hash_table_lookup(darktable.control->widgets, darktable.control->mapping_widget);
+  s->action = action;
+  if(action->target != darktable.control->mapping_widget)
+  {
+    // find relative module instance
+    GSList *owner = action->owner;
+    while(owner && ((dt_action_t *)owner->data)->type != DT_ACTION_TYPE_IOP) owner = ((dt_action_t *)owner->data)->owner;
+    if(owner)
+    {
+      // calculate location of module struct from owner, which is a pointer to actions field
+      // FIXME this will be better after making module_t a derived class from actions_owner
+      dt_iop_module_so_t *module = (dt_iop_module_so_t *)owner;
+      module -= (dt_iop_module_so_t *)&module->actions - module;
+
+      int current_instance = 0;
+      for(GList *iop_mods = darktable.develop->iop;
+          iop_mods;
+          iop_mods = g_list_next(iop_mods))
+      {
+        dt_iop_module_t *mod = (dt_iop_module_t *)iop_mods->data;
+
+        if(mod->so == module && mod->iop_order != INT_MAX)
+        {
+          current_instance++;
+
+          if(!s->instance)
+          {
+            for(GSList *w = mod->widget_list; w; w = w->next)
+            {
+              if(((dt_action_widget_t *)w->data)->widget == darktable.control->mapping_widget)
+              {
+                s->instance = current_instance;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if(current_instance - s->instance < s->instance) s->instance -= current_instance + 1;
+    }
+  }
 
   GSequenceIter *existing = g_sequence_lookup(darktable.control->keys, s, shortcut_compare_func, 0 /*view*/);
 
@@ -133,20 +174,20 @@ static void define_new_mapping()
   {
     // FIXME ask confirmation
     dt_shortcut_t *e = g_sequence_get(existing);
-    fprintf(stderr,_("replacing key %s, move %d, button %d, click %d, mapped to %s\n"),
+    fprintf(stderr,_("replacing key %s, move %d, button %d, click %d, instance %d, mapped to %s\n"),
                   gtk_accelerator_get_label(e->keyval, e->state),
-                  e->move, e->button, e->click, e->action->label_translated);
+                  e->move, e->button, e->click, e->instance, e->action->label_translated);
     g_sequence_set(existing, s);
   }
 
-  dt_control_log(_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+  dt_control_log(_("key %s, move %d, button %d, click %d, instance %d, mapped to %s\n"),
                  gtk_accelerator_get_label(s->keyval, s->state),
-                 s->move, s->button, s->click,
-                 ((dt_action_t *)darktable.control->mapping_widget)->label_translated);
-  fprintf(stderr,_("key %s, move %d, button %d, click %d, mapped to %s\n"),
+                 s->move, s->button, s->click, s->instance,
+                 action->label_translated);
+  fprintf(stderr,_("key %s, move %d, button %d, click %d, instance %d, mapped to %s\n"),
                  gtk_accelerator_get_label(s->keyval, s->state),
-                 s->move, s->button, s->click,
-                 ((dt_action_t *)darktable.control->mapping_widget)->label_translated);
+                 s->move, s->button, s->click, s->instance,
+                 action->label_translated);
 
   darktable.control->mapping_widget = NULL;
 }
@@ -159,7 +200,58 @@ static void process_mapping()
   if(existing)
   {
     bac = g_sequence_get(existing);
-    GtkWidget *widget = bac->action->target;
+
+    GtkWidget *widget = NULL;
+    if(bac->instance)
+    {
+      // find relative module instance
+      GSList *owner = bac->action->owner;
+      while(owner && ((dt_action_t *)owner->data)->type != DT_ACTION_TYPE_IOP) owner = ((dt_action_t *)owner->data)->owner;
+      if(owner)
+      {
+        // calculate location of module struct from owner, which is a pointer to actions field
+        // FIXME this will be better after making module_t a derived class from actions_owner
+        dt_iop_module_so_t *module = (dt_iop_module_so_t *)owner;
+        module -= (dt_iop_module_so_t *)&module->actions - module;
+
+        dt_iop_module_t *mod = NULL;
+        int current_instance = abs(bac->instance);
+
+        for(GList *iop_mods = bac->instance > 0
+                            ? darktable.develop->iop
+                            : g_list_last(darktable.develop->iop);
+            iop_mods;
+            iop_mods = bac->instance > 0
+                     ? g_list_next(iop_mods)
+                     : g_list_previous(iop_mods))
+        {
+          mod = (dt_iop_module_t *)iop_mods->data;
+
+          if(mod->so == module &&
+             mod->iop_order != INT_MAX &&
+             !--current_instance) break;
+        }
+
+        if(mod)
+        {
+          for(GSList *w = mod->widget_list; w; w = w->next)
+          {
+            dt_action_widget_t *referral = w->data;
+            if(referral->action == bac->action)
+            {
+              widget = referral->widget;
+              break;
+            }
+          }
+        }
+      }
+    }
+    else
+      widget = bac->action->target;
+
+    if(!DT_IS_BAUHAUS_WIDGET(widget)) return;
+
+
     dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
 
     if(bhw->type == DT_BAUHAUS_SLIDER)
@@ -251,6 +343,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
       pressed_button = 0;
       bsc.button = 0;
       bsc.move = DT_SHORTCUT_MOVE_NONE;
+      bsc.instance = 0;
 
       if(!pressed_keys)
       {
@@ -323,7 +416,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
       bsc.move = DT_SHORTCUT_MOVE_HORIZONTAL; // set fake direction so the start position doesn't keep resetting
     }
 
-    const gdouble min_move = 10;
+    const gdouble min_move = 10; // FIXME calculate multi-step move in one go (after implementation of separate dispatch_single_move)
     gdouble x_move = event->motion.x - move_start_x;
     gdouble y_move = event->motion.y - move_start_y;
     if(fmax(fabs(x_move),fabs(y_move)) > min_move)
@@ -391,12 +484,13 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
 {
   gchar *shortcut_text = NULL;
 
+  dt_action_t *action = g_hash_table_lookup(darktable.control->widgets, widget);
   for(GSequenceIter *iter = g_sequence_get_begin_iter(darktable.control->keys);
       !g_sequence_iter_is_end(iter);
       iter = g_sequence_iter_next(iter))
   {
     dt_shortcut_t *s = g_sequence_get(iter);
-    if(s->action->target == widget)
+    if(s->action == action)
     {
       gchar *key_name = gtk_accelerator_get_label(s->keyval, s->state);
 
@@ -404,13 +498,17 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
       const char *click_string[] = { "", "", N_("double"), N_("triple") };
 
       gchar *tmp = shortcut_text;
-      shortcut_text = g_strdup_printf("%s\nshortcut: %s%s%s%s%s %s %s %s",
+      shortcut_text = g_strdup_printf("%s\nshortcut: %s%s%s%s%s %s %s %s %s",
                                       shortcut_text ? shortcut_text : "", key_name,
                                       s->move ? " " : "", _(move_string[s->move]),
                                       s->click ? " " : "", _(click_string[s->click]),
                                       s->button & (1 << GDK_BUTTON_PRIMARY) ? _("left") : "",
                                       s->button & (1 << GDK_BUTTON_MIDDLE) ? _("middle") : "",
-                                      s->button & (1 << GDK_BUTTON_SECONDARY) ? _("right") : "");
+                                      s->button & (1 << GDK_BUTTON_SECONDARY) ? _("right") : "",
+                                      s->instance == 1 ? _("first instance") :
+                                      s->instance == -1 ? _("last instance") :
+                                      s->instance != 0 ? _("relative instance") : ""
+                                      );
       g_free(tmp);
       g_free(key_name);
     }
@@ -432,6 +530,16 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
   g_free(markup_text);
 
   return TRUE;
+}
+
+static void _remove_widget_from_hashtable(GtkWidget *widget, gpointer user_data)
+{
+  dt_action_t *action = g_hash_table_lookup(darktable.control->widgets, widget);
+  if(action && action->target == widget)
+  {
+    action->target = NULL;
+    g_hash_table_remove(darktable.control->widgets, widget);
+  }
 }
 
 void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
@@ -476,13 +584,17 @@ void dt_action_define(dt_iop_module_t *self, const gchar *path, gboolean local, 
   ac->type = DT_ACTION_TYPE_WIDGET;
   ac->local = local;
 
-  if(ac->target) g_hash_table_remove(darktable.control->widgets, ac->target);
-
   ac->target = widget;
   g_hash_table_insert(darktable.control->widgets, widget, ac);
-  // FIXME set destroy callback to remove widget from hashtable again
-  // FIXME: eventually widget pointer needs to be saved linked to module_t (not _so_t) for multi-instance
 
+  // for iop (to support multi-instance)
+  dt_action_widget_t *referral = g_malloc0(sizeof(dt_action_widget_t));
+  referral->action = ac;
+  referral->widget = widget;
+  self->widget_list = g_slist_prepend(self->widget_list, referral);
+
+  // in case of bauhaus widget more efficient to directly implement in dt_bauhaus_..._destroy
+  g_signal_connect(G_OBJECT(widget), "destroy", G_CALLBACK(_remove_widget_from_hashtable), NULL);
   g_signal_connect(G_OBJECT(widget), "query-tooltip", G_CALLBACK(_shortcut_tooltip_callback), NULL);
 }
 
@@ -1271,6 +1383,12 @@ void dt_accel_connect_instance_iop(dt_iop_module_t *module)
       gtk_accel_group_connect_by_path(darktable.control->accelerators,
                                       stored_accel->accel->path, stored_accel->closure);
     }
+  }
+
+  for(GSList *w = module->widget_list; w; w = w->next)
+  {
+    dt_action_widget_t *referral = w->data;
+    referral->action->target = referral->widget;
   }
 }
 

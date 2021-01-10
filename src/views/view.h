@@ -54,8 +54,7 @@ typedef enum
   DT_VIEW_MAP = 8,
   DT_VIEW_SLIDESHOW = 16,
   DT_VIEW_PRINT = 32,
-  DT_VIEW_KNIGHT = 64,
-  DT_VIEW_MULTI = 1024
+  DT_VIEW_KNIGHT = 64
 } dt_view_type_flags_t;
 
 // flags that a view can set in flags()

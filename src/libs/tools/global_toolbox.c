@@ -706,14 +706,14 @@ static void _main_do_event_keymap(GdkEvent *event, gpointer data)
   case GDK_LEAVE_NOTIFY:
     if(event->crossing.mode == GDK_CROSSING_NORMAL || event->crossing.mode == GDK_CROSSING_UNGRAB)
     {
-      darktable.control->mapping_widget = g_hash_table_lookup(darktable.control->widgets, event_widget);
+      darktable.control->mapping_widget = event->type == GDK_ENTER_NOTIFY &&
+                                          g_hash_table_lookup(darktable.control->widgets, event_widget)
+                                        ? event_widget : NULL;
 
       dt_control_allow_change_cursor();
-      dt_control_change_cursor(event->type == GDK_ENTER_NOTIFY
-                              && event_widget
-                              && darktable.control->mapping_widget
-                              ? GDK_BOX_SPIRAL
-                              : GDK_X_CURSOR);
+      dt_control_change_cursor(darktable.control->mapping_widget
+                               ? GDK_BOX_SPIRAL
+                               : GDK_X_CURSOR);
       dt_control_forbid_change_cursor();
     }
     break;
