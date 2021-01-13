@@ -249,43 +249,57 @@ static void process_mapping()
     else
       widget = bac->action->target;
 
-    if(!DT_IS_BAUHAUS_WIDGET(widget)) return;
-
-
-    dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
-
-    if(bhw->type == DT_BAUHAUS_SLIDER)
+    if(DTGTK_IS_TOGGLEBUTTON(widget))
     {
-      float value = dt_bauhaus_slider_get(widget);
-      float step = dt_bauhaus_slider_get_step(widget);
-      float multiplier = dt_accel_get_slider_scale_multiplier();
+      GdkEvent *event = gdk_event_new(GDK_BUTTON_PRESS);
+      event->button.state = 0; // FIXME support ctrl-press
+      event->button.button = 1;
+      event->button.window = gtk_widget_get_window(widget);
+      g_object_ref(event->button.window);
 
-      const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
-      if(fabsf(step*multiplier) < min_visible)
-        multiplier = min_visible / fabsf(step);
+      gtk_widget_event(widget, event);
 
-      if(direction == DT_DIRECTION_UP)
-        dt_bauhaus_slider_set(widget, value + step * multiplier);
-      else
-        dt_bauhaus_slider_set(widget, value - step * multiplier);
+      gdk_event_free(event);
     }
-    else
+    else if(GTK_IS_BUTTON(widget)) // test DTGTK_IS_TOGGLEBUTTON first, because it is also a button
+      gtk_button_clicked(GTK_BUTTON(widget));
+    else if(DT_IS_BAUHAUS_WIDGET(widget))
     {
-      const int currentval = dt_bauhaus_combobox_get(widget);
+      dt_bauhaus_widget_t *bhw = (dt_bauhaus_widget_t *)DT_BAUHAUS_WIDGET(widget);
 
-      if(direction == DT_DIRECTION_UP)
+      if(bhw->type == DT_BAUHAUS_SLIDER)
       {
-        const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
-        dt_bauhaus_combobox_set(widget, nextval);
+        float value = dt_bauhaus_slider_get(widget);
+        float step = dt_bauhaus_slider_get_step(widget);
+        float multiplier = dt_accel_get_slider_scale_multiplier();
+
+        const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
+        if(fabsf(step*multiplier) < min_visible)
+          multiplier = min_visible / fabsf(step);
+
+        if(direction == DT_DIRECTION_UP)
+          dt_bauhaus_slider_set(widget, value + step * multiplier);
+        else
+          dt_bauhaus_slider_set(widget, value - step * multiplier);
       }
       else
       {
-        const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
-        dt_bauhaus_combobox_set(widget, prevval);
+        const int currentval = dt_bauhaus_combobox_get(widget);
+
+        if(direction == DT_DIRECTION_UP)
+        {
+          const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
+          dt_bauhaus_combobox_set(widget, nextval);
+        }
+        else
+        {
+          const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
+          dt_bauhaus_combobox_set(widget, prevval);
+        }
       }
+      g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+      dt_accel_widget_toast(widget);
     }
-    g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
-    dt_accel_widget_toast(widget);
   }
 }
 
@@ -312,12 +326,13 @@ static gboolean _double_click_timeout(gpointer user_data)
 {
   if(bsc.click == GPOINTER_TO_INT(user_data))
   {
+    if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+
     direction = DT_DIRECTION_UP;
+
     dispatch_single_act();
 
     bsc.click = DT_SHORTCUT_CLICK_NONE;
-
-    if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
   }
 
   return FALSE;
@@ -383,8 +398,8 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
         }
         else
         {
+          gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
           bsc.click = DT_SHORTCUT_CLICK_NONE;
-          gdk_seat_ungrab(gdk_display_get_default_seat(gdk_window_get_display(event->key.window)));
         }
       }
     }
@@ -396,6 +411,16 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     break;
   case GDK_GRAB_BROKEN:
     if(event->grab_broken.implicit) break;
+  case GDK_WINDOW_STATE:
+    event->focus_change.in = FALSE; // fall through to GDK_FOCUS_CHANGE
+  case GDK_FOCUS_CHANGE: // dialog boxes and switch to other app release grab
+    if(!event->focus_change.in)
+    {
+      gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+      g_slist_free(pressed_keys);
+      pressed_keys = NULL;
+      bsc.click = DT_SHORTCUT_CLICK_NONE;
+    }
     break;
   case GDK_SCROLL:
     {
