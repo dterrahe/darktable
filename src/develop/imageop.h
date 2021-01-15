@@ -33,6 +33,7 @@ typedef struct dt_iop_roi_t
 #include "common/darktable.h"
 #include "common/introspection.h"
 #include "common/opencl.h"
+#include "common/action.h"
 #include "control/settings.h"
 #include "develop/pixelpipe.h"
 #include "dtgtk/togglebutton.h"
@@ -157,7 +158,7 @@ typedef struct dt_iop_module_so_t
   /** gui is also only inited once at startup. */
 //  dt_iop_gui_data_t *gui_data;
   /** which results in this widget here, too. */
-  GSList actions;
+  dt_action_t actions;
   /** button used to show/hide this module in the plugin list. */
   dt_iop_module_state_t state;
 

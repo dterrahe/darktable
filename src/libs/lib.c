@@ -905,10 +905,16 @@ static void dt_lib_init_module(void *m)
 {
   dt_lib_module_t *module = (dt_lib_module_t *)m;
   dt_lib_init_presets(module);
+
   // Calling the keyboard shortcut initialization callback if present
   // do not init accelerators if there is no gui
   if(darktable.gui)
   {
+    module->actions = (dt_action_t){ module->plugin_name, module->name(module), DT_ACTION_TYPE_LIB,
+                                    .owner = &darktable.control->actions_libs,
+                                    .next = darktable.control->actions_libs.target };
+    darktable.control->actions_libs.target = &module->actions;
+
     if(module->init_key_accels) module->init_key_accels(module);
     module->gui_init(module);
     g_object_ref_sink(module->widget);

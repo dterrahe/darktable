@@ -45,16 +45,14 @@
 
 void dt_control_init(dt_control_t *s)
 {
-  dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
-  new_action->label = "global";
-  new_action->label_translated = _("global");
-  new_action->type = DT_ACTION_TYPE_GLOBAL;
-  new_action->owner = NULL;
-  s->actions.data = new_action;
-  s->actions.next = NULL;
+  s->actions_global = (dt_action_t){ "global", _("global"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_views };
+  s->actions_views = (dt_action_t){ "views", _("views"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_libs };
+  s->actions_libs = (dt_action_t){ "lib", C_("accel", "utility modules"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_iops };
+  s->actions_iops = (dt_action_t){ "iop", C_("accel", "processing modules"), DT_ACTION_TYPE_CATEGORY };
+  s->actions = &s->actions_global;
 
   s->widgets = g_hash_table_new(NULL, NULL);
-  s->keys = g_sequence_new(g_free);
+  s->shortcuts = g_sequence_new(g_free);
   s->mapping_widget = NULL;
 
   memset(s->vimkey, 0, sizeof(s->vimkey));
@@ -201,7 +199,7 @@ void dt_control_cleanup(dt_control_t *s)
   dt_pthread_mutex_destroy(&s->progress_system.mutex);
   if(s->accelerator_list) g_slist_free_full(s->accelerator_list, g_free);
   if(s->widgets) g_hash_table_destroy(s->widgets);
-  if(s->keys) g_sequence_free(s->keys);
+  if(s->shortcuts) g_sequence_free(s->shortcuts);
 }
 
 

@@ -453,6 +453,14 @@ GtkWidget *dt_iop_togglebutton_new(dt_iop_module_t *self, const gchar *label, co
   }
   g_free(label_first_line);
 
+// FIXME after #6875 merge add section
+/*
+  gchar *combined_label = section_orig
+                        ? g_strdup_printf("%s`%s", section_orig, label_orig)
+                        : g_strdup(label_orig);
+*/
+  dt_action_define_iop(self, label, local, 0, 0, w);
+// FIXME CTRL-press callback? Presumably should be sub with fallback
   return w;
 }
 

@@ -151,6 +151,8 @@ typedef struct dt_lib_module_t
   void (*connect_key_accels)(struct dt_lib_module_t *self);
 
   GSList *accel_closures;
+  dt_action_t actions;
+
   GtkWidget *reset_button;
   GtkWidget *presets_button;
 } dt_lib_module_t;

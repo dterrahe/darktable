@@ -221,15 +221,10 @@ static int dt_view_load_module(void *v, const char *libname, const char *module_
 
   if(darktable.gui)
   {
-      dt_action_t *new_action = calloc(1, sizeof(dt_action_t));
-      new_action->label = view->module_name;
-      new_action->label_translated = view->name(view);
-      new_action->type = DT_ACTION_TYPE_VIEW;
-      new_action->owner = &darktable.control->actions;
-      view->actions.data = new_action;
-      dt_action_t *control_action = darktable.control->actions.data;
-      view->actions.next = control_action->target;
-      control_action->target = &view->actions;
+    view->actions = (dt_action_t){ view->module_name, view->name(view), DT_ACTION_TYPE_VIEW,
+                                  .owner = &darktable.control->actions_views,
+                                  .next = darktable.control->actions_views.target };
+    darktable.control->actions_views.target = &view->actions;
   }
 
   return 0;

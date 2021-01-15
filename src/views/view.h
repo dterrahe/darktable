@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "common/action.h"
 #include "common/history.h"
 #include "common/image.h"
 #ifdef HAVE_PRINT
@@ -171,7 +172,7 @@ typedef struct dt_view_t
   GSList *accel_closures;
   GtkWidget *dynamic_accel_current;
 
-  GSList actions;
+  dt_action_t actions;
 } dt_view_t;
 
 typedef enum dt_view_image_over_t
