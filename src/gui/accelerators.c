@@ -174,8 +174,8 @@ void dt_shortcuts_save(const gchar *file_name)
       fprintf(f, "%s", s->action->label);
       if(s->instance == -1) fprintf(f, ";last");
       if(s->instance == +1) fprintf(f, ";first");
-      if(abs(s->instance) > 1) fprintf(f, ";%d", s->instance);
-      if(s->speed != 1.0) fprintf(f, ";%.f", s->speed);
+      if(abs(s->instance) > 1) fprintf(f, ";%+d", s->instance);
+      if(s->speed != 1.0) fprintf(f, ";*%.f", s->speed);
 
       fprintf(f, "\n");
     }
@@ -199,49 +199,47 @@ void dt_shortcuts_load(const gchar *file_name)
       char *read = fgets(line, sizeof(line), f);
       if(read > 0)
       {
-        line[strcspn(line, "\r\n")] = 0; // cut before newline at end.
+        line[strcspn(line, "\r\n")] = '\0';
+
+        char *act_start = strchr(line, '=');
+        if(!act_start)
+        {
+          fprintf(stderr, "[dt_shortcuts_load] line '%s' is not an assignment\n", line);
+          continue;
+        }
+        char *act_end = act_start + strcspn(act_start, ";");
 
         dt_shortcut_t s = { .speed = 1, .click = DT_SHORTCUT_CLICK_SINGLE };
 
-        gchar **split_line = g_strsplit(line, "=", 2);
-        if(!*split_line || !*(split_line + 1))
+        gtk_accelerator_parse(strtok(line, "=;/"), &s.key, &s.mods);
+        if(!s.key)
         {
-          fprintf(stderr, "[dt_shortcuts_load] line '%s' is not an assignment\n", line);
-          g_strfreev(split_line);
+          fprintf(stderr, "[dt_shortcuts_load] '%s' is not a valid key\n", line);
           continue;
         }
 
-        gchar **left_side = g_strsplit(*split_line, ";", -1);
-        gchar **right_side = g_strsplit(*(split_line + 1), ";", -1);
-        g_strfreev(split_line);
-
-        if(!*left_side || !*right_side || (gtk_accelerator_parse(*left_side, &s.key, &s.mods), !s.key))
+        char *token;
+        while((token = strtok(NULL, "=;/")) && token < act_start)
         {
-          fprintf(stderr, "[dt_shortcuts_load] line '%s' does not specify a key or action\n", line);
-          g_strfreev(left_side);
-          g_strfreev(right_side);
-          continue;
+          for(int move = DT_SHORTCUT_MOVE_NONE; move_string[move]; move++)
+            if(!strcmp(token, move_string[move])) s.move = move;
+          for(int click = DT_SHORTCUT_CLICK_NONE; click_string[click]; click++)
+            if(!strcmp(token, click_string[click])) s.click = click;
+          if(!strcmp(token, "left"))   s.button |= (1 << GDK_BUTTON_PRIMARY);
+          if(!strcmp(token, "middle")) s.button |= (1 << GDK_BUTTON_MIDDLE);
+          if(!strcmp(token, "right"))  s.button |= (1 << GDK_BUTTON_SECONDARY);
         }
-
-        gchar **parsing = left_side + 1;
-        while(*parsing)
-        {
-
-          parsing++;
-        }
-        g_strfreev(left_side);
 
         // find action and also views along the way
-        gchar **path = g_strsplit(*right_side, "/", -1);
-        gchar **segment = path;
         dt_action_t *ac = darktable.control->actions;
-        while(*segment && ac)
+        while(token && token < act_end && ac)
         {
-          if(!strcmp(*segment, ac->label))
+          if(!strcmp(token, ac->label))
           {
             s.action = ac;
             ac = ac->type <= DT_ACTION_TYPE_SECTION ? ac->target : NULL;
-            segment++;
+            // FIXME determine views
+            token = strtok(NULL, ";/");
           }
           else
           {
@@ -249,22 +247,22 @@ void dt_shortcuts_load(const gchar *file_name)
           }
         }
 
-        g_strfreev(path);
-
-        if(*segment || ac)
+        if((token && token < act_end) || ac)
         {
-          fprintf(stderr, "[dt_shortcuts_load] action path '%s' not found\n", *right_side);
-          g_strfreev(right_side);
+          for(token = ++act_start; token < act_end; token++) if(!*token) *token = '/';
+          fprintf(stderr, "[dt_shortcuts_load] action path '%s' not found\n", act_start);
           continue;
         }
 
-        parsing = right_side + 1;
-        while(*parsing)
+        while(token)
         {
+          if(!strcmp(token, "first")) s.instance = 1;
+          if(!strcmp(token, "last" )) s.instance = -1;
+          if(*token == '+' || *token == '-') sscanf(token, "%d", &s.instance);
+          if(*token == '*') sscanf(token, "*%f", &s.speed);
 
-          parsing++;
+          token = strtok(NULL, ";");
         }
-        g_strfreev(right_side);
 
         dt_shortcut_t *new_shortcut = g_malloc(sizeof(dt_shortcut_t));
         *new_shortcut = s;
@@ -440,7 +438,7 @@ static void process_mapping()
       {
         float value = dt_bauhaus_slider_get(widget);
         float step = dt_bauhaus_slider_get_step(widget);
-        float multiplier = dt_accel_get_slider_scale_multiplier();
+        float multiplier = dt_accel_get_slider_scale_multiplier() * bac->speed;
 
         const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
         if(fabsf(step*multiplier) < min_visible)
