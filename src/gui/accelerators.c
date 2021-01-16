@@ -675,7 +675,8 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
 static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
                                            GtkTooltip *tooltip, gpointer user_data)
 {
-  gchar *shortcut_text = NULL;
+  gchar hint[1024];
+  int length = 0;
 
   dt_action_t *action = g_hash_table_lookup(darktable.control->widgets, widget);
   for(GSequenceIter *iter = g_sequence_get_begin_iter(darktable.control->shortcuts);
@@ -685,41 +686,45 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
     dt_shortcut_t *s = g_sequence_get(iter);
     if(s->action == action)
     {
-      gchar *key_name = gtk_accelerator_get_label(s->key, s->mods);
+#define add_hint(format, ...) length += length >= sizeof(hint) ? 0 : snprintf(hint + length, sizeof(hint) - length, format, __VA_ARGS__)
 
-      gchar *tmp = shortcut_text;
-      shortcut_text = g_strdup_printf("%s\nshortcut: %s%s%s%s%s %s %s %s %s",
-                                      shortcut_text ? shortcut_text : "", key_name,
-                                      s->move ? " " : "", _(move_string[s->move]),
-                                      s->click ? " " : "", _(click_string[s->click]),
-                                      s->button & (1 << GDK_BUTTON_PRIMARY) ? _("left") : "",
-                                      s->button & (1 << GDK_BUTTON_MIDDLE) ? _("middle") : "",
-                                      s->button & (1 << GDK_BUTTON_SECONDARY) ? _("right") : "",
-                                      s->instance == 1 ? _("first instance") :
-                                      s->instance == -1 ? _("last instance") :
-                                      s->instance != 0 ? _("relative instance") : ""
-                                      );
-      g_free(tmp);
+      gchar *key_name = gtk_accelerator_get_label(s->key, s->mods);
+      add_hint("\n%s: %s", _("shortcut"), key_name);
       g_free(key_name);
+      if(s->move) add_hint(", %s", _(move_string[s->move]));
+      if(s->click > DT_SHORTCUT_CLICK_SINGLE) add_hint(", %s %s", _(click_string[s->click]), _("click"));
+
+      if(s->button) add_hint(", %s:", _("buttons"));
+      if(s->button & (1 << GDK_BUTTON_PRIMARY  )) add_hint(" %s", _("left"));
+      if(s->button & (1 << GDK_BUTTON_MIDDLE   )) add_hint(" %s", _("middle"));
+      if(s->button & (1 << GDK_BUTTON_SECONDARY)) add_hint(" %s", _("right"));
+
+      if(s->instance == 1) add_hint(", %s", _("first instance"));
+      else
+      if(s->instance == -1) add_hint(", %s", _("last instance"));
+      else
+      if(s->instance != 0) add_hint(", %s %+d", _("relative instance"), s->instance);
+
+      if(s->speed != 1.0) add_hint(_(", %s *%g"), _("speed"), s->speed);
+
+#undef add_hint
     }
   }
 
-  gchar *markup_text = gtk_widget_get_tooltip_markup(widget);
-
-  if(shortcut_text)
+  if(length)
   {
-    gchar *shortcut_escaped = g_markup_escape_text(shortcut_text, -1);
-    gchar *original_markup = markup_text;
-    markup_text = g_strdup_printf("%s<span style='italic' foreground='red'>%s</span>", original_markup, shortcut_escaped);
+    gchar *original_markup = gtk_widget_get_tooltip_markup(widget);
+    gchar *hint_escaped = g_markup_escape_text(hint, -1);
+    gchar *markup_text = g_strdup_printf("%s<span style='italic' foreground='red'>%s</span>", original_markup, hint_escaped);
+    gtk_tooltip_set_markup(tooltip, markup_text);
     g_free(original_markup);
-    g_free(shortcut_escaped);
-    g_free(shortcut_text);
+    g_free(hint_escaped);
+    g_free(markup_text);
+
+    return TRUE;
   }
 
-  gtk_tooltip_set_markup(tooltip, markup_text);
-  g_free(markup_text);
-
-  return TRUE;
+  return FALSE;
 }
 
 static void _remove_widget_from_hashtable(GtkWidget *widget, gpointer user_data)
