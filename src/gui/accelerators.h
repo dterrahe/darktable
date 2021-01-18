@@ -40,6 +40,21 @@ dt_action_t *dt_action_locate(dt_action_t *owner, gchar **path);
 
 void dt_action_define_iop(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget);
 
+typedef uint8_t dt_input_driver_t;
+
+typedef struct dt_input_driver_definition_t
+{
+  gchar *(*key_to_string)(guint key, guint mods, gboolean display);
+  gboolean (*string_to_key)(gchar *string, guint *key, guint *mods);
+  gchar *(*move_to_string)(guint move, gboolean display);
+  gboolean (*string_to_move)(gchar *string, guint *move);
+} dt_input_driver_definition_t;
+
+dt_input_driver_t dt_register_input_driver_t(dt_input_driver_definition_t *driver);
+void dt_shortcut_key_down(dt_input_driver_t id, guint time, guint key, guint mods);
+void dt_shortcut_key_up(dt_input_driver_t id, guint time, guint key, guint mods);
+float dt_shortcut_move(dt_input_driver_t id, guint time, guint move, float size);
+
 typedef struct dt_accel_t
 {
 

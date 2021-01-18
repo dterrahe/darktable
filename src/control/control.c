@@ -54,6 +54,7 @@ void dt_control_init(dt_control_t *s)
   s->widgets = g_hash_table_new(NULL, NULL);
   s->shortcuts = g_sequence_new(g_free);
   s->mapping_widget = NULL;
+  s->input_devices = NULL;
 
   memset(s->vimkey, 0, sizeof(s->vimkey));
   s->vimkey_cnt = 0;

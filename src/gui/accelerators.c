@@ -31,6 +31,7 @@
 
 typedef struct dt_shortcut_t
 {
+  dt_input_driver_t key_driver;
   guint key;
   guint mods;
   guint button;
@@ -41,19 +42,8 @@ typedef struct dt_shortcut_t
     DT_SHORTCUT_CLICK_DOUBLE,
     DT_SHORTCUT_CLICK_TRIPLE
   } click;
-  enum
-  {
-    DT_SHORTCUT_MOVE_NONE,
-    DT_SHORTCUT_MOVE_SCROLL,
-    DT_SHORTCUT_MOVE_HORIZONTAL,
-    DT_SHORTCUT_MOVE_VERTICAL,
-    DT_SHORTCUT_MOVE_DIAGUP,
-    DT_SHORTCUT_MOVE_DIAGDOWN,
-    DT_SHORTCUT_MOVE_LEFTRIGHT,
-    DT_SHORTCUT_MOVE_UPDOWN,
-    DT_SHORTCUT_MOVE_PGUPDOWN,
-    DT_SHORTCUT_MOVE_MIDI,
-  } move;
+  dt_input_driver_t move_driver;
+  guint move;
   enum
   {
     DT_SHORTCUT_DIR_NONE,
@@ -94,9 +84,23 @@ typedef struct dt_shortcut_t
   dt_action_t *action;
 } dt_shortcut_t;
 
-const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal up"), N_("diagonal down"),
+typedef enum dt_shortcut_move_t
+{
+  DT_SHORTCUT_MOVE_NONE,
+  DT_SHORTCUT_MOVE_SCROLL,
+  DT_SHORTCUT_MOVE_HORIZONTAL,
+  DT_SHORTCUT_MOVE_VERTICAL,
+  DT_SHORTCUT_MOVE_DIAGONAL,
+  DT_SHORTCUT_MOVE_SKEW,
+  DT_SHORTCUT_MOVE_LEFTRIGHT,
+  DT_SHORTCUT_MOVE_UPDOWN,
+  DT_SHORTCUT_MOVE_PGUPDOWN,
+} dt_shortcut_move_t;
+
+
+const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal"), N_("skew"),
                                   N_("leftright"), N_("updown"), N_("pgupdown"), N_("midi"), NULL };
-const char *click_string[] = { "", "", N_("double"), N_("triple"), NULL };
+const char *click_string[] = { "", N_(""), N_("double"), N_("triple"), NULL };
 
 
 gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, gpointer user_data)
@@ -104,6 +108,8 @@ gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, g
   const dt_shortcut_t *a = (const dt_shortcut_t *)shortcut_a;
   const dt_shortcut_t *b = (const dt_shortcut_t *)shortcut_b;
 
+  if(a->key_driver != b->key_driver)
+    return a->key_driver - b->key_driver;
   if(a->key != b->key)
     return a->key - b->key;
   else if(a->mods != b->mods)
@@ -112,6 +118,8 @@ gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, g
     return a->click - b->click;
   else if(a->button != b->button)
     return a->button - b->button;
+  if(a->move_driver != b->move_driver)
+    return a->move_driver - b->move_driver;
   else if(a->move != b->move)
     return a->move - b->move;
   else if(a->views != b->views)
@@ -505,6 +513,76 @@ static gboolean _double_click_timeout(gpointer user_data)
   return FALSE;
 }
 
+dt_input_driver_t dt_register_input_driver_t(dt_input_driver_definition_t *driver)
+{
+  return 1;
+}
+
+void dt_shortcut_key_down(dt_input_driver_t id, guint time, guint key, guint mods)
+{
+  if(!g_slist_find(pressed_keys, GINT_TO_POINTER(key)))
+  {
+    bsc.key = key;
+    pressed_button = 0;
+    bsc.button = 0;
+    bsc.move = DT_SHORTCUT_MOVE_NONE;
+    bsc.instance = 0;
+    bsc.speed = 1.0;
+
+    if(!pressed_keys)
+    {
+      bsc.mods = mods; // FIXME shift+num keys needs special treatment?
+      bsc.click++; // only count number of double clicks on first key
+
+      GdkCursor *cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "all-scroll");
+      gdk_seat_grab(gdk_display_get_default_seat(gdk_display_get_default()),
+                    gtk_widget_get_window(dt_ui_main_window(darktable.gui->ui)),
+                    GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE, cursor,
+                    NULL, NULL, NULL);
+      g_object_unref(cursor);
+    }
+
+    pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(key));
+  }
+  // key hold (CTRL-W for example) should fire without key being released if shortcut is marked as "key hold" (or something)??
+  // otherwise only fire when key is released (because we are expecting scroll or something)
+}
+
+void dt_shortcut_key_up(dt_input_driver_t id, guint time, guint key, guint mods)
+{
+  direction = DT_DIRECTION_UP;
+
+  GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(key));
+  if(stored_key)
+  {
+    pressed_keys = g_slist_remove_link(pressed_keys, stored_key);
+
+    if(!pressed_keys)
+    {
+      if(!bsc.button && bsc.move == DT_SHORTCUT_MOVE_NONE)
+      {
+        int delay = 0;
+        g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+        g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
+      }
+      else
+      {
+        gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+        bsc.click = DT_SHORTCUT_CLICK_NONE;
+      }
+    }
+  }
+  else
+  {
+    fprintf(stderr, "[shortcut_dispatcher] released key wasn't stored\n");
+  }
+}
+
+float dt_shortcut_move(dt_input_driver_t id, guint time, guint move, float size)
+{
+  return 1;
+}
+
 gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
 {
   static gdouble move_start_x = 0;
@@ -519,62 +597,13 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
   case GDK_KEY_PRESS:
     if(event->key.is_modifier) return FALSE;
 
-    if(!g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval)))
-    {
-      bsc.key = event->key.keyval;
-      pressed_button = 0;
-      bsc.button = 0;
-      bsc.move = DT_SHORTCUT_MOVE_NONE;
-      bsc.instance = 0;
-      bsc.speed = 1.0;
-
-      if(!pressed_keys)
-      {
-        bsc.mods = event->key.state & gtk_accelerator_get_default_mod_mask(); // FIXME shift+num keys needs special treatment?
-        bsc.click++; // only count number of double clicks on first key
-
-        GdkCursor *cursor = gdk_cursor_new_from_name(gdk_window_get_display(event->key.window), "all-scroll");
-        gdk_seat_grab(gdk_event_get_seat(event),
-                      event->key.window, GDK_SEAT_CAPABILITY_ALL_POINTING, FALSE, cursor,
-                      event, NULL, NULL);
-        g_object_unref(cursor);
-      }
-
-      pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(event->key.keyval));
-    }
-    // key hold (CTRL-W for example) should fire without key being released if shortcut is marked as "key hold" (or something)??
-    // otherwise only fire when key is released (because we are expecting scroll or something)
+    dt_shortcut_key_down(0, event->key.time, event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
 
     break;
   case GDK_KEY_RELEASE:
     if(event->key.is_modifier) return FALSE;
 
-    direction = DT_DIRECTION_UP;
-
-    GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(event->key.keyval));
-    if(stored_key)
-    {
-      pressed_keys = g_slist_remove_link(pressed_keys, stored_key);
-
-      if(!pressed_keys)
-      {
-        if(!bsc.button && bsc.move == DT_SHORTCUT_MOVE_NONE)
-        {
-          int delay = 0;
-          g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
-          g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
-        }
-        else
-        {
-          gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
-          bsc.click = DT_SHORTCUT_CLICK_NONE;
-        }
-      }
-    }
-    else
-    {
-      fprintf(stderr, "[shortcut_dispatcher] released key wasn't stored\n");
-    }
+    dt_shortcut_key_up(0, event->key.time, event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
 
     break;
   case GDK_GRAB_BROKEN:
@@ -636,7 +665,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
         direction = y_move < 0
                   ? (move_start_y -= min_move, DT_DIRECTION_UP)
                   : (move_start_y += min_move, DT_DIRECTION_DOWN);
-        bsc.move = y_move * x_move < 0 ? DT_SHORTCUT_MOVE_DIAGUP : DT_SHORTCUT_MOVE_DIAGDOWN;
+        bsc.move = y_move * x_move < 0 ? DT_SHORTCUT_MOVE_SKEW : DT_SHORTCUT_MOVE_DIAGONAL;
       }
 
       dispatch_single_act();

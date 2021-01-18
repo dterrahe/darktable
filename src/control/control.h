@@ -168,6 +168,7 @@ typedef struct dt_control_t
   GHashTable *widgets;
   GSequence *shortcuts;
   void *mapping_widget;
+  GSList *input_devices;
 
   char vimkey[256];
   int vimkey_cnt;

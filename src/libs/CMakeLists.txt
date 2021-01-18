@@ -36,6 +36,8 @@ set(MODULES ${MODULES} hinter)
 set(MODULES ${MODULES} global_toolbox)
 set(MODULES ${MODULES} timeline)
 set(MODULES ${MODULES} image_infos)
+set(MODULES ${MODULES} midi)
+set(MODULES ${MODULES} gamepad)
 
 if(BUILD_BATTERY_INDICATOR)
   set(MODULES ${MODULES} battery_indicator)
@@ -82,6 +84,27 @@ add_library(hinter MODULE "tools/hinter.c")
 add_library(global_toolbox MODULE "tools/global_toolbox.c")
 add_library(timeline MODULE "tools/timeline.c")
 add_library(image_infos MODULE "tools/image_infos.c")
+add_library(midi MODULE "tools/midi.c")
+add_library(gamepad MODULE "tools/gamepad.c")
+
+find_path(PORTMIDI_INCLUDE_DIR NAMES portmidi.h
+          DOC "The Portmidi include directory"
+)
+find_library(PORTMIDI_LIBRARY NAMES portmidi
+          DOC "The Portmidi library"
+)
+if(PORTMIDI_INCLUDE_DIR)
+  add_definitions("-DHAVE_PORTMIDI")
+  include_directories(${PORTMIDI_INCLUDE_DIRS})
+  target_link_libraries (midi ${PORTMIDI_LIBRARY})
+endif()
+
+find_package(SDL2)
+if(SDL2_INCLUDE_DIRS)
+  add_definitions("-DHAVE_SDL")
+  include_directories(${SDL2_INCLUDE_DIRS})
+  target_link_libraries(gamepad ${SDL2_LIBRARIES})
+endif()
 
 if(BUILD_BATTERY_INDICATOR)
   add_library(battery_indicator MODULE "tools/battery_indicator.c")
