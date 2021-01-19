@@ -110,6 +110,47 @@ typedef struct midi_device
   gint            LED_ring_behavior_fan;
   gint            LED_ring_behavior_trim;
 } midi_device;
+
+const char *note_names[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B", NULL };
+
+gchar *key_to_string(guint key, guint mods, gboolean display)
+{
+  return g_strdup_printf(display ? "%s%d" : "Note %s%d", note_names[key % 12], key / 12 - 1);
+}
+
+gboolean string_to_key(gchar *string, guint *key, guint *mods)
+{
+  int octave = 0;
+  char name[3];
+
+  if(sscanf(string, "Note %2[ABCDEFG#]%d", name, &octave) == 2)
+  {
+    for(int note = 0; note_names[note]; note++)
+    {
+      if(!strcmp(name, note_names[note]))
+      {
+        *key = note + 12 * (octave + 1);
+        return TRUE;
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+gchar *move_to_string(guint move, gboolean display)
+{
+  return g_strdup_printf("CC%u", move);
+}
+
+gboolean string_to_move(gchar *string, guint *move)
+{
+  return sscanf(string, "CC%u", move) == 1;
+}
+
+const dt_input_driver_definition_t driver_definition
+  = { key_to_string, string_to_key, move_to_string, string_to_move };
+
 /*
 void midi_config_save(midi_device *midi)
 {
@@ -808,13 +849,13 @@ static gboolean poll_midi_devices(gpointer user_data)
         case 0x9:  // note on
           dt_print(DT_DEBUG_INPUT, "Note On: Channel %d, Data1 %d\n", eventChannel, eventData1);
 
-          dt_shortcut_key_down(1, event.timestamp, eventData1, eventChannel);
+          dt_shortcut_key_down(midi->id, event.timestamp, eventData1, eventChannel);
           break;
 
         case 0x8:  // note off
           dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", eventChannel, eventData1);
 
-          dt_shortcut_key_up(1, event.timestamp, eventData1, eventChannel);
+          dt_shortcut_key_up(midi->id, event.timestamp, eventData1, eventChannel);
           break;
 
         case 0xb:  // controllers, sustain
@@ -826,8 +867,6 @@ static gboolean poll_midi_devices(gpointer user_data)
           break;
       }
     }
-
-  //  aggregate_and_set_slider(midi, -1, -1, -1);
 
     devices = devices->next;
   }
@@ -845,7 +884,9 @@ void midi_open_devices(dt_lib_module_t *self)
   else
     dt_print(DT_DEBUG_INPUT, "[midi_open_devices] PortMidi initialized\n");
 
-  for(int i = 0; i < Pm_CountDevices(); i++)
+  dt_input_device_t id = dt_register_input_driver(&driver_definition);
+
+  for(int i = 0; i < Pm_CountDevices() && i < 10; i++)
   {
     const PmDeviceInfo *info = Pm_GetDeviceInfo(i);
 
@@ -866,7 +907,7 @@ void midi_open_devices(dt_lib_module_t *self)
 
       midi_device *midi = (midi_device *)g_malloc0(sizeof(midi_device));
 
-      midi->id = i;
+      midi->id = id++;
       midi->portmidi_in = stream_in;
 
       if(info->output)

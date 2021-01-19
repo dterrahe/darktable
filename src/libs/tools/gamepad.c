@@ -63,8 +63,76 @@ typedef struct gamepad_device
   SDL_GameController *controller;
 } gamepad_device;
 
+const char *button_ids[]
+  = { "<Button>A", "<Button>B", "<Button>X", "<Button>Y", "<Button>Back", "<Button>Guide", "<Button>Start",
+      "<Left>Stick", "<Right>Stick", "<Left>Shoulder", "<Right>Shoulder",
+      "<Dpad>Up", "<Dpad>Down", "<Dpad>Left", "<Dpad>Right",
+      "<Button>Misc1", "Paddle1", "Paddle2", "Paddle3", "Paddle4", "Touchpad", NULL };
+
+const char *button_names[]
+  = { N_("button a"), N_("button b"), N_( "button x"), N_("button y"), N_("button back"), N_("button guide"), N_("button start"),
+      N_("left stick"), N_("right stick"), N_("left shoulder"), N_("right shoulder"),
+      N_("dpad up"), N_("dpad down"), N_("dpad left"), N_("dpad right"),
+      N_("button misc1"), N_("paddle1"), N_("paddle2"), N_("paddle3"), N_("paddle4"), N_("touchpad"), NULL };
+
+gchar *key_to_string(guint key, guint mods, gboolean display)
+{
+  return g_strdup(key >= SDL_CONTROLLER_BUTTON_MAX ? "invalid gamepad button" :
+                  display ? _(button_names[key]) : button_ids[key]);
+}
+
+gboolean string_to_key(gchar *string, guint *key, guint *mods)
+{
+  *mods = 0;
+  *key = 0;
+  while(button_ids[*key])
+    if(!strcmp(button_ids[*key], string))
+      return TRUE;
+    else
+      (*key)++;
+
+  return FALSE;
+}
+
+const char *move_ids[]
+  = { "<Left>X", "<Left>Y", "<Right>X", "<Right>Y", "<Left>Trigger", "<Right>Trigger",
+      "<Left>Diagonal", "<Left>Skew", "<Right>Diagonal", "<Right>Skew", NULL };
+
+const char *move_names[]
+  = { N_("left x"), N_(" left y"), N_("right x"), N_("right y"), N_("left trigger"), N_("right trigger"),
+      N_("left diagonal"), N_("left skew"), N_("right diagonal"), N_("right skew"), NULL };
+
+gchar *move_to_string(guint move, gboolean display)
+{
+  return g_strdup(move >= SDL_CONTROLLER_AXIS_MAX + 4 /* diagonals */ ? "invalid gamepad axis" :
+                  display ? _(move_names[move]) : move_ids[move]);
+}
+
+gboolean string_to_move(gchar *string, guint *move)
+{
+  *move = 0;
+  while(move_ids[*move])
+    if(!strcmp(move_ids[*move], string))
+      return TRUE;
+    else
+      (*move)++;
+
+  return FALSE;
+}
+
+const dt_input_driver_definition_t driver_definition
+  = { key_to_string, string_to_key, move_to_string, string_to_move };
+
+/*
+void repeating_move()
+{
+      dt_shortcut_move(dt_input_driver_t id, guint time, guint move, float size);
+}
+*/
 static gboolean poll_gamepad_devices(gpointer user_data)
 {
+  dt_input_device_t id = GPOINTER_TO_INT(user_data);
+
   SDL_Event event;
 
   while(SDL_PollEvent(&event) > 0 )
@@ -73,14 +141,15 @@ static gboolean poll_gamepad_devices(gpointer user_data)
     {
     case SDL_CONTROLLERBUTTONDOWN:
       dt_print(DT_DEBUG_INPUT, "SDL button down event time %d id %d button %hhd state %hhd\n", event.cbutton.timestamp, event.cbutton.which, event.cbutton.button, event.cbutton.state);
-      dt_shortcut_key_down(2 + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
+      dt_shortcut_key_down(id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
       break;
     case SDL_CONTROLLERBUTTONUP:
       dt_print(DT_DEBUG_INPUT, "SDL button up event time %d id %d button %hhd state %hhd\n", event.cbutton.timestamp, event.cbutton.which, event.cbutton.button, event.cbutton.state);
-      dt_shortcut_key_up(2 + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
+      dt_shortcut_key_up(id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
       break;
     case SDL_CONTROLLERAXISMOTION:
       dt_print(DT_DEBUG_INPUT, "SDL axis event type %d time %d id %d axis %hhd value %hd\n", event.caxis.type, event.caxis.timestamp, event.caxis.which, event.caxis.axis, event.caxis.value);
+
       break;
     case SDL_CONTROLLERDEVICEADDED:
       break;
@@ -99,7 +168,9 @@ void gamepad_open_devices(dt_lib_module_t *self)
   else
     dt_print(DT_DEBUG_INPUT, "[gamepad_open_devices] SDL initialized\n");
 
-  for(int i = 0; i < SDL_NumJoysticks(); i++)
+  dt_input_device_t id = dt_register_input_driver(&driver_definition);
+
+  for(int i = 0; i < SDL_NumJoysticks() && i < 10; i++)
   {
     if(SDL_IsGameController(i))
     {
@@ -121,9 +192,9 @@ void gamepad_open_devices(dt_lib_module_t *self)
 
       self->data = g_slist_append(self->data, gamepad);
 
-      g_timeout_add(10, poll_gamepad_devices, gamepad);
     }
   }
+  if(self->data) g_timeout_add(10, poll_gamepad_devices, GINT_TO_POINTER(id));
 }
 
 void gamepad_device_free(gamepad_device *gamepad)

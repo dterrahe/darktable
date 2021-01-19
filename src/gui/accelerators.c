@@ -31,7 +31,7 @@
 
 typedef struct dt_shortcut_t
 {
-  dt_input_driver_t key_driver;
+  dt_input_device_t key_device;
   guint key;
   guint mods;
   guint button;
@@ -42,7 +42,7 @@ typedef struct dt_shortcut_t
     DT_SHORTCUT_CLICK_DOUBLE,
     DT_SHORTCUT_CLICK_TRIPLE
   } click;
-  dt_input_driver_t move_driver;
+  dt_input_device_t move_device;
   guint move;
   enum
   {
@@ -99,7 +99,7 @@ typedef enum dt_shortcut_move_t
 
 
 const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal"), N_("skew"),
-                                  N_("leftright"), N_("updown"), N_("pgupdown"), N_("midi"), NULL };
+                                  N_("leftright"), N_("updown"), N_("pgupdown"), NULL };
 const char *click_string[] = { "", N_(""), N_("double"), N_("triple"), NULL };
 
 
@@ -108,8 +108,8 @@ gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, g
   const dt_shortcut_t *a = (const dt_shortcut_t *)shortcut_a;
   const dt_shortcut_t *b = (const dt_shortcut_t *)shortcut_b;
 
-  if(a->key_driver != b->key_driver)
-    return a->key_driver - b->key_driver;
+  if(a->key_device != b->key_device)
+    return a->key_device - b->key_device;
   if(a->key != b->key)
     return a->key - b->key;
   else if(a->mods != b->mods)
@@ -118,8 +118,8 @@ gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, g
     return a->click - b->click;
   else if(a->button != b->button)
     return a->button - b->button;
-  if(a->move_driver != b->move_driver)
-    return a->move_driver - b->move_driver;
+  if(a->move_device != b->move_device)
+    return a->move_device - b->move_device;
   else if(a->move != b->move)
     return a->move - b->move;
   else if(a->views != b->views)
@@ -155,6 +155,43 @@ void _dump_actions(dt_action_t *action)
   }
 }
 
+#define DT_MOVE_NAME -1
+gchar *shortcut_key_move_name(dt_input_device_t id, guint key_move, guint mods, gboolean display)
+{
+  if(id == 0)
+  {
+    if(mods == DT_MOVE_NAME)
+      return g_strdup(_(move_string[key_move]));
+    else
+      return display ? gtk_accelerator_get_label(key_move, mods)
+                     : gtk_accelerator_name(key_move, mods);
+  }
+  else
+  {
+    GSList *device = darktable.control->input_devices;
+    while(device)
+    {
+      if((id -= 10) < 10)
+      {
+        dt_input_driver_definition_t *driver = device->data;
+        gchar *without_device
+          = mods == DT_MOVE_NAME
+          ? driver->move_to_string(key_move, display)
+          : driver->key_to_string(key_move, mods, display);
+
+        if(display || id == 0) return without_device;
+
+        gchar *with_device = g_strdup_printf("%hhu:%s", id, without_device);
+        g_free(without_device);
+        return with_device;
+      }
+      device = device->next;
+    }
+
+    return g_strdup(_("Unknown device"));
+  }
+}
+
 void dt_shortcuts_save(const gchar *file_name)
 {
   FILE *f = g_fopen(file_name, "wb");
@@ -166,7 +203,7 @@ void dt_shortcuts_save(const gchar *file_name)
     {
       dt_shortcut_t *s = g_sequence_get(i);
 
-      gchar *key_name = gtk_accelerator_name(s->key, s->mods);
+      gchar *key_name = shortcut_key_move_name(s->key_device, s->key, s->mods, FALSE);
       fprintf(f, "%s", key_name);
       g_free(key_name);
       if(s->button & (1 << GDK_BUTTON_PRIMARY  )) fprintf(f, ";%s", "left");
@@ -174,7 +211,12 @@ void dt_shortcuts_save(const gchar *file_name)
       if(s->button & (1 << GDK_BUTTON_SECONDARY)) fprintf(f, ";%s", "right");
       if(s->click > DT_SHORTCUT_CLICK_SINGLE) fprintf(f, ";%s", click_string[s->click]);
       // FIXME long click
-      if(s->move) fprintf(f, ";%s", move_string[s->move]);
+      if(s->move)
+      {
+        gchar *move_name = shortcut_key_move_name(s->key_device, s->move, DT_MOVE_NAME, FALSE);
+        fprintf(f, ";%s", move_name);
+        g_free(move_name);
+      }
 
       fprintf(f, "=");
 
@@ -219,23 +261,78 @@ void dt_shortcuts_load(const gchar *file_name)
 
         dt_shortcut_t s = { .speed = 1, .click = DT_SHORTCUT_CLICK_SINGLE };
 
-        gtk_accelerator_parse(strtok(line, "=;/"), &s.key, &s.mods);
+        char *token = strtok(line, "=;/");
+        gtk_accelerator_parse(token, &s.key, &s.mods);
         if(!s.key)
         {
-          fprintf(stderr, "[dt_shortcuts_load] '%s' is not a valid key\n", line);
-          continue;
+          dt_input_device_t id = 10;
+          if(strlen(token) > 2 && token[1] == ':')
+          {
+            id += token[0] - '0';
+            token += 2;
+          }
+          GSList *device = darktable.control->input_devices;
+          while(device)
+          {
+            dt_input_driver_definition_t *driver = device->data;
+            if(driver->string_to_key(token, &s.key, &s.mods))
+            {
+              s.key_device = id;
+              break;
+            }
+            id += 10;
+            device = device->next;
+          }
+          if(!device)
+          {
+            fprintf(stderr, "[dt_shortcuts_load] '%s' is not a valid key\n", line);
+            continue;
+          }
         }
 
-        char *token;
         while((token = strtok(NULL, "=;/")) && token < act_start)
         {
-          for(int move = DT_SHORTCUT_MOVE_NONE; move_string[move]; move++)
-            if(!strcmp(token, move_string[move])) s.move = move;
-          for(int click = DT_SHORTCUT_CLICK_NONE; click_string[click]; click++)
-            if(!strcmp(token, click_string[click])) s.click = click;
-          if(!strcmp(token, "left"))   s.button |= (1 << GDK_BUTTON_PRIMARY);
-          if(!strcmp(token, "middle")) s.button |= (1 << GDK_BUTTON_MIDDLE);
-          if(!strcmp(token, "right"))  s.button |= (1 << GDK_BUTTON_SECONDARY);
+          if(!strcmp(token, "left"  )) { s.button |= (1 << GDK_BUTTON_PRIMARY  ); continue; }
+          if(!strcmp(token, "middle")) { s.button |= (1 << GDK_BUTTON_MIDDLE   ); continue; }
+          if(!strcmp(token, "right" )) { s.button |= (1 << GDK_BUTTON_SECONDARY); continue; }
+
+          for(int click = DT_SHORTCUT_CLICK_NONE + 1; click_string[click]; click++)
+            if(!strcmp(token, click_string[click]))
+            {
+              s.click = click;
+              break;
+            }
+          if(s.click != DT_SHORTCUT_CLICK_NONE) continue;
+
+          for(int move = DT_SHORTCUT_MOVE_NONE + 1; move_string[move]; move++)
+            if(!strcmp(token, move_string[move]))
+            {
+              s.move = move;
+              break;
+            }
+          if(s.move != DT_SHORTCUT_MOVE_NONE) continue;
+
+          dt_input_device_t id = 10;
+          if(strlen(token) > 2 && token[1] == ':')
+          {
+            id += token[0] - '0';
+            token += 2;
+          }
+          GSList *device = darktable.control->input_devices;
+          while(device)
+          {
+            dt_input_driver_definition_t *driver = device->data;
+            if(driver->string_to_move(token, &s.move))
+            {
+              s.move_device = id;
+              break;
+            }
+            id += 10;
+            device = device->next;
+          }
+          if(device) continue;
+
+          fprintf(stderr, "[dt_shortcuts_load] token '%s' not recognised\n", token);
         }
 
         // find action and also views along the way
@@ -264,10 +361,11 @@ void dt_shortcuts_load(const gchar *file_name)
 
         while(token)
         {
-          if(!strcmp(token, "first")) s.instance = 1;
-          if(!strcmp(token, "last" )) s.instance = -1;
-          if(*token == '+' || *token == '-') sscanf(token, "%d", &s.instance);
-          if(*token == '*') sscanf(token, "*%f", &s.speed);
+          if(!strcmp(token, "first")) s.instance =  1; else
+          if(!strcmp(token, "last" )) s.instance = -1; else
+          if(*token == '+' || *token == '-') sscanf(token, "%d", &s.instance); else
+          if(*token == '*') sscanf(token, "*%f", &s.speed); else
+          fprintf(stderr, "[dt_shortcuts_load] token '%s' not recognised\n", token);
 
           token = strtok(NULL, ";");
         }
@@ -349,14 +447,16 @@ static void define_new_mapping()
     g_sequence_set(existing, s);
   }
 
-  gchar *key_name = gtk_accelerator_get_label(s->key, s->mods);
-  dt_control_log(_("key %s, move %d, button %d, click %d mapped to %s, instance %d\n"),
-                 key_name, s->move, s->button, s->click,
+  gchar *key_name = shortcut_key_move_name(s->key_device, s->key, s->mods, TRUE);
+  gchar *move_name = shortcut_key_move_name(s->move_device, s->move, DT_MOVE_NAME, TRUE);
+  dt_control_log(_("key %s, move %s, button %d, click %d mapped to %s, instance %d\n"),
+                 key_name, move_name, s->button, s->click,
                  action->label_translated, s->instance);
-  fprintf(stderr,_("key %s, move %d, button %d, click %d mapped to %s, instance %d\n"),
-                 key_name, s->move, s->button, s->click,
+  fprintf(stderr,_("key %s, move %s, button %d, click %d mapped to %s, instance %d\n"),
+                 key_name, move_name, s->button, s->click,
                  action->label_translated, s->instance);
   g_free(key_name);
+  g_free(move_name);
 
   darktable.control->mapping_widget = NULL;
 
@@ -513,15 +613,28 @@ static gboolean _double_click_timeout(gpointer user_data)
   return FALSE;
 }
 
-dt_input_driver_t dt_register_input_driver_t(dt_input_driver_definition_t *driver)
+dt_input_device_t dt_register_input_driver(const dt_input_driver_definition_t *driver)
 {
-  return 1;
+  dt_input_device_t id = 10;
+
+  GSList *device = darktable.control->input_devices;
+  while(device)
+  {
+    if(device->data == driver) return id;
+    device = device->next;
+    id += 10;
+  }
+
+  darktable.control->input_devices = g_slist_append(darktable.control->input_devices, (gpointer)driver);
+
+  return id;
 }
 
-void dt_shortcut_key_down(dt_input_driver_t id, guint time, guint key, guint mods)
+void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mods)
 {
   if(!g_slist_find(pressed_keys, GINT_TO_POINTER(key)))
   {
+    bsc.key_device = id;
     bsc.key = key;
     pressed_button = 0;
     bsc.button = 0;
@@ -548,7 +661,7 @@ void dt_shortcut_key_down(dt_input_driver_t id, guint time, guint key, guint mod
   // otherwise only fire when key is released (because we are expecting scroll or something)
 }
 
-void dt_shortcut_key_up(dt_input_driver_t id, guint time, guint key, guint mods)
+void dt_shortcut_key_up(dt_input_device_t id, guint time, guint key, guint mods)
 {
   direction = DT_DIRECTION_UP;
 
@@ -578,8 +691,10 @@ void dt_shortcut_key_up(dt_input_driver_t id, guint time, guint key, guint mods)
   }
 }
 
-float dt_shortcut_move(dt_input_driver_t id, guint time, guint move, float size)
+float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size)
 {
+
+
   return 1;
 }
 
@@ -717,10 +832,15 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
     {
 #define add_hint(format, ...) length += length >= sizeof(hint) ? 0 : snprintf(hint + length, sizeof(hint) - length, format, __VA_ARGS__)
 
-      gchar *key_name = gtk_accelerator_get_label(s->key, s->mods);
+      gchar *key_name = shortcut_key_move_name(s->key_device, s->key, s->mods, TRUE);
       add_hint("\n%s: %s", _("shortcut"), key_name);
       g_free(key_name);
-      if(s->move) add_hint(", %s", _(move_string[s->move]));
+      if(s->move)
+      {
+        gchar *move_name = shortcut_key_move_name(s->key_device, s->move, DT_MOVE_NAME, TRUE);
+        add_hint(", %s", move_name);
+        g_free(move_name);
+      }
       if(s->click > DT_SHORTCUT_CLICK_SINGLE) add_hint(", %s %s", _(click_string[s->click]), _("click"));
 
       if(s->button) add_hint(", %s:", _("buttons"));
