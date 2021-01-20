@@ -60,7 +60,11 @@ int position()
 
 typedef struct gamepad_device
 {
+  dt_input_device_t id;
   SDL_GameController *controller;
+  Uint32 timestamp;
+  int value[SDL_CONTROLLER_AXIS_MAX];
+  int location[SDL_CONTROLLER_AXIS_MAX];
 } gamepad_device;
 
 const char *button_ids[]
@@ -129,32 +133,128 @@ void repeating_move()
       dt_shortcut_move(dt_input_driver_t id, guint time, guint move, float size);
 }
 */
+static gboolean pump_events(gpointer user_data)
+{
+  SDL_PumpEvents();
+
+  return G_SOURCE_CONTINUE;
+}
+
+void process_axis_timestep(gamepad_device *gamepad, Uint32 timestamp)
+{
+  if(timestamp > gamepad->timestamp)
+  {
+    Uint32 time = timestamp - gamepad->timestamp;
+    for(SDL_GameControllerAxis axis = SDL_CONTROLLER_AXIS_LEFTX; axis <= SDL_CONTROLLER_AXIS_RIGHTY; axis++)
+    {
+      if(abs(gamepad->value[axis]) > 4000)
+        gamepad->location[axis] += time * gamepad->value[axis];
+    }
+  }
+
+  gamepad->timestamp = timestamp;
+}
+
+void process_axis_and_send(gamepad_device *gamepad, Uint32 timestamp)
+{
+  process_axis_timestep(gamepad, timestamp);
+
+  const gdouble step_size = 32768 * 1000 / 5; // FIXME configurable, x & y separately
+
+  for(int side = 0; side < 2; side++)
+  {
+    int stick = SDL_CONTROLLER_AXIS_LEFTX + 2 * side;
+
+    gdouble angle = gamepad->location[stick] / (0.001 + gamepad->location[stick + 1]);
+
+    gdouble size = trunc(gamepad->location[stick] / step_size);
+
+    if(size != 0 && fabs(angle) >= 2)
+    {
+      gamepad->location[stick] -= size * step_size;
+      gamepad->location[stick + 1] = 0;
+      dt_shortcut_move(gamepad->id, timestamp, stick, size);
+    }
+    else
+    {
+      size = - trunc(gamepad->location[stick + 1] / step_size);
+      if(size != 0)
+      {
+        gamepad->location[stick + 1] += size * step_size;
+        if(fabs(angle) < .5)
+        {
+          gamepad->location[stick] = 0;
+          dt_shortcut_move(gamepad->id, timestamp, stick + 1, size);
+        }
+        else
+        {
+          gamepad->location[stick]  += size * step_size * angle;
+          dt_shortcut_move(gamepad->id, timestamp, stick + ((angle < 0) ? 7 : 6), size);
+        }
+      }
+    }
+
+/*
+    int trigger = SDL_CONTROLLER_AXIS_TRIGGERLEFT + side;
+    if(gamepad->value[trigger]) dt_shortcut_move(gamepad->id, timestamp, trigger, gamepad->value[trigger] / 32000);
+*/
+  }
+}
+
 static gboolean poll_gamepad_devices(gpointer user_data)
 {
-  dt_input_device_t id = GPOINTER_TO_INT(user_data);
+//  dt_input_device_t id = GPOINTER_TO_INT(user_data);
+  dt_lib_module_t *self = user_data;
 
   SDL_Event event;
+  int num_events = 0;
+
+  gamepad_device *gamepad = NULL;
+  SDL_JoystickID prev_which = -1;
 
   while(SDL_PollEvent(&event) > 0 )
   {
+    num_events++;
+
+    if(event.cbutton.which != prev_which)
+    {
+      prev_which = event.cbutton.which;
+      SDL_GameController *controller = SDL_GameControllerFromInstanceID(prev_which);
+      gamepad = NULL;
+      for(GSList *gamepads = self->data; gamepads; gamepads = gamepads->next)
+        if(((gamepad_device *)(gamepads->data))->controller == controller)
+        {
+          gamepad = gamepads->data;
+          break;
+        }
+      if(!gamepad) return G_SOURCE_REMOVE;
+    }
+
     switch(event.type)
     {
     case SDL_CONTROLLERBUTTONDOWN:
       dt_print(DT_DEBUG_INPUT, "SDL button down event time %d id %d button %hhd state %hhd\n", event.cbutton.timestamp, event.cbutton.which, event.cbutton.button, event.cbutton.state);
-      dt_shortcut_key_down(id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
+      process_axis_and_send(gamepad, event.cbutton.timestamp);
+      dt_shortcut_key_down(gamepad->id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
       break;
     case SDL_CONTROLLERBUTTONUP:
       dt_print(DT_DEBUG_INPUT, "SDL button up event time %d id %d button %hhd state %hhd\n", event.cbutton.timestamp, event.cbutton.which, event.cbutton.button, event.cbutton.state);
-      dt_shortcut_key_up(id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
+      process_axis_and_send(gamepad, event.cbutton.timestamp);
+      dt_shortcut_key_up(gamepad->id + event.cbutton.which, event.cbutton.timestamp, event.cbutton.button, 0);
       break;
     case SDL_CONTROLLERAXISMOTION:
       dt_print(DT_DEBUG_INPUT, "SDL axis event type %d time %d id %d axis %hhd value %hd\n", event.caxis.type, event.caxis.timestamp, event.caxis.which, event.caxis.axis, event.caxis.value);
-
+      process_axis_timestep(gamepad, event.caxis.timestamp);
+      gamepad->value[event.caxis.axis] = event.caxis.value;
       break;
     case SDL_CONTROLLERDEVICEADDED:
       break;
     }
   }
+
+  for(GSList *gamepads = self->data; gamepads; gamepads = gamepads->next) process_axis_and_send(gamepads->data, SDL_GetTicks());
+
+  if(num_events) dt_print(DT_DEBUG_INPUT, "sdl num_events: %d time: %u\n", num_events, SDL_GetTicks());
   return G_SOURCE_CONTINUE;
 }
 
@@ -189,18 +289,20 @@ void gamepad_open_devices(dt_lib_module_t *self)
       gamepad_device *gamepad = (gamepad_device *)g_malloc0(sizeof(gamepad_device));
 
       gamepad->controller = controller;
+      gamepad->id = id++;
 
       self->data = g_slist_append(self->data, gamepad);
-
     }
   }
-  if(self->data) g_timeout_add(10, poll_gamepad_devices, GINT_TO_POINTER(id));
+  if(self->data)
+  {
+    g_timeout_add(10, poll_gamepad_devices, self);
+    g_timeout_add_full(G_PRIORITY_HIGH, 5, pump_events, self, NULL);
+  }
 }
 
 void gamepad_device_free(gamepad_device *gamepad)
 {
-  g_source_remove_by_user_data(gamepad);
-
   SDL_GameControllerClose(gamepad->controller);
 
   g_free(gamepad);
@@ -208,6 +310,9 @@ void gamepad_device_free(gamepad_device *gamepad)
 
 void gamepad_close_devices(dt_lib_module_t *self)
 {
+  g_source_remove_by_user_data(self); // poll_gamepad_devices
+  g_source_remove_by_user_data(self); // pump_events
+
   g_slist_free_full(self->data, (void (*)(void *))gamepad_device_free);
   self->data = NULL;
 

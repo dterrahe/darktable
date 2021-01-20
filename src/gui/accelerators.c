@@ -97,10 +97,9 @@ typedef enum dt_shortcut_move_t
   DT_SHORTCUT_MOVE_PGUPDOWN,
 } dt_shortcut_move_t;
 
-
 const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal"), N_("skew"),
                                   N_("leftright"), N_("updown"), N_("pgupdown"), NULL };
-const char *click_string[] = { "", N_(""), N_("double"), N_("triple"), NULL };
+const char *click_string[] = { "", N_("single"), N_("double"), N_("triple"), NULL };
 
 
 gint shortcut_compare_func(gconstpointer shortcut_a, gconstpointer shortcut_b, gpointer user_data)
@@ -155,16 +154,34 @@ void _dump_actions(dt_action_t *action)
   }
 }
 
+dt_input_device_t dt_register_input_driver(const dt_input_driver_definition_t *driver)
+{
+  dt_input_device_t id = 10;
+
+  GSList *device = darktable.control->input_devices;
+  while(device)
+  {
+    if(device->data == driver) return id;
+    device = device->next;
+    id += 10;
+  }
+
+  darktable.control->input_devices = g_slist_append(darktable.control->input_devices, (gpointer)driver);
+
+  return id;
+}
+
 #define DT_MOVE_NAME -1
-gchar *shortcut_key_move_name(dt_input_device_t id, guint key_move, guint mods, gboolean display)
+gchar *shortcut_key_move_name(dt_input_device_t id, guint key_or_move, guint mods, gboolean display)
 {
   if(id == 0)
   {
     if(mods == DT_MOVE_NAME)
-      return g_strdup(_(move_string[key_move]));
+      return g_strdup(_(move_string[key_or_move]));
     else
-      return display ? gtk_accelerator_get_label(key_move, mods)
-                     : gtk_accelerator_name(key_move, mods);
+      return !key_or_move ? g_strdup(display ? "" : "None")
+                          : ( display ? gtk_accelerator_get_label(key_or_move, mods)
+                                      : gtk_accelerator_name(key_or_move, mods) );
   }
   else
   {
@@ -176,8 +193,8 @@ gchar *shortcut_key_move_name(dt_input_device_t id, guint key_move, guint mods, 
         dt_input_driver_definition_t *driver = device->data;
         gchar *without_device
           = mods == DT_MOVE_NAME
-          ? driver->move_to_string(key_move, display)
-          : driver->key_to_string(key_move, mods, display);
+          ? driver->move_to_string(key_or_move, display)
+          : driver->key_to_string(key_or_move, mods, display);
 
         if(display || id == 0) return without_device;
 
@@ -213,7 +230,7 @@ void dt_shortcuts_save(const gchar *file_name)
       // FIXME long click
       if(s->move)
       {
-        gchar *move_name = shortcut_key_move_name(s->key_device, s->move, DT_MOVE_NAME, FALSE);
+        gchar *move_name = shortcut_key_move_name(s->move_device, s->move, DT_MOVE_NAME, FALSE);
         fprintf(f, ";%s", move_name);
         g_free(move_name);
       }
@@ -262,31 +279,34 @@ void dt_shortcuts_load(const gchar *file_name)
         dt_shortcut_t s = { .speed = 1, .click = DT_SHORTCUT_CLICK_SINGLE };
 
         char *token = strtok(line, "=;/");
-        gtk_accelerator_parse(token, &s.key, &s.mods);
-        if(!s.key)
+        if(strcmp(token, "None"))
         {
-          dt_input_device_t id = 10;
-          if(strlen(token) > 2 && token[1] == ':')
+          gtk_accelerator_parse(token, &s.key, &s.mods);
+          if(!s.key)
           {
-            id += token[0] - '0';
-            token += 2;
-          }
-          GSList *device = darktable.control->input_devices;
-          while(device)
-          {
-            dt_input_driver_definition_t *driver = device->data;
-            if(driver->string_to_key(token, &s.key, &s.mods))
+            dt_input_device_t id = 10;
+            if(strlen(token) > 2 && token[1] == ':')
             {
-              s.key_device = id;
-              break;
+              id += token[0] - '0';
+              token += 2;
             }
-            id += 10;
-            device = device->next;
-          }
-          if(!device)
-          {
-            fprintf(stderr, "[dt_shortcuts_load] '%s' is not a valid key\n", line);
-            continue;
+            GSList *device = darktable.control->input_devices;
+            while(device)
+            {
+              dt_input_driver_definition_t *driver = device->data;
+              if(driver->string_to_key(token, &s.key, &s.mods))
+              {
+                s.key_device = id;
+                break;
+              }
+              id += 10;
+              device = device->next;
+            }
+            if(!device)
+            {
+              fprintf(stderr, "[dt_shortcuts_load] '%s' is not a valid key\n", line);
+              continue;
+            }
           }
         }
 
@@ -296,21 +316,23 @@ void dt_shortcuts_load(const gchar *file_name)
           if(!strcmp(token, "middle")) { s.button |= (1 << GDK_BUTTON_MIDDLE   ); continue; }
           if(!strcmp(token, "right" )) { s.button |= (1 << GDK_BUTTON_SECONDARY); continue; }
 
-          for(int click = DT_SHORTCUT_CLICK_NONE + 1; click_string[click]; click++)
+          int click = 0;
+          while(click_string[++click])
             if(!strcmp(token, click_string[click]))
             {
               s.click = click;
               break;
             }
-          if(s.click != DT_SHORTCUT_CLICK_NONE) continue;
+          if(click_string[click]) continue;
 
-          for(int move = DT_SHORTCUT_MOVE_NONE + 1; move_string[move]; move++)
+          int move = 0;
+          while(move_string[++move])
             if(!strcmp(token, move_string[move]))
             {
               s.move = move;
               break;
             }
-          if(s.move != DT_SHORTCUT_MOVE_NONE) continue;
+          if(move_string[move]) continue;
 
           dt_input_device_t id = 10;
           if(strlen(token) > 2 && token[1] == ':')
@@ -384,7 +406,6 @@ void dt_shortcuts_load(const gchar *file_name)
 static dt_shortcut_t bsc = { 0 };  // building shortcut
 static GSList *pressed_keys = NULL; // list of currently pressed keys
 static guint pressed_button = 0;
-static enum { DT_DIRECTION_UP, DT_DIRECTION_DOWN } direction;
 
 static void define_new_mapping()
 {
@@ -453,7 +474,7 @@ static void define_new_mapping()
                  key_name, move_name, s->button, s->click,
                  action->label_translated, s->instance);
   fprintf(stderr,_("key %s, move %s, button %d, click %d mapped to %s, instance %d\n"),
-                 key_name, move_name, s->button, s->click,
+                 key_name ? key_name : _("none"), move_name ? move_name : _("none"), s->button, s->click,
                  action->label_translated, s->instance);
   g_free(key_name);
   g_free(move_name);
@@ -467,7 +488,7 @@ static void define_new_mapping()
   g_free(file_name);
 }
 
-static void process_mapping()
+static void process_mapping(double move_size)
 {
   dt_shortcut_t *bac = NULL;
 
@@ -552,16 +573,13 @@ static void process_mapping()
         if(fabsf(step*multiplier) < min_visible)
           multiplier = min_visible / fabsf(step);
 
-        if(direction == DT_DIRECTION_UP)
-          dt_bauhaus_slider_set(widget, value + step * multiplier);
-        else
-          dt_bauhaus_slider_set(widget, value - step * multiplier);
+        dt_bauhaus_slider_set(widget, value + move_size * step * multiplier);
       }
       else
       {
         const int currentval = dt_bauhaus_combobox_get(widget);
 
-        if(direction == DT_DIRECTION_UP)
+        if(move_size > 0)
         {
           const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
           dt_bauhaus_combobox_set(widget, nextval);
@@ -578,8 +596,13 @@ static void process_mapping()
   }
 }
 
-static void dispatch_single_act()
+float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size)
 {
+  bsc.move_device = id;
+  bsc.move = move;
+  bsc.speed = 1.0;
+
+
   if(darktable.control->mapping_widget)
   {
     define_new_mapping();
@@ -589,12 +612,16 @@ static void dispatch_single_act()
     if(pressed_keys)
       for(GSList *current_key = pressed_keys; current_key; current_key = current_key->next)
       {
-        bsc.key = GPOINTER_TO_INT(current_key->data);
-        process_mapping();
+        // FIXME get device id from list
+        bsc.key = GPOINTER_TO_INT(current_key->data); // use same mods for all
+        process_mapping(size);
+        // FIXME in case of multiple keys also process the double pressing key?
       }
     else
-      process_mapping();
+      process_mapping(size);
   }
+
+  return 0; // FIXME when requesting value, if any keys pressed, going to get wrong values. Maybe do an (extra) call for bsc.key = 0 and move = 0 to retrieve position to return
 }
 
 static gboolean _double_click_timeout(gpointer user_data)
@@ -603,9 +630,7 @@ static gboolean _double_click_timeout(gpointer user_data)
   {
     if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
 
-    direction = DT_DIRECTION_UP;
-
-    dispatch_single_act();
+    dt_shortcut_move(0, 0, 0, 1);
 
     bsc.click = DT_SHORTCUT_CLICK_NONE;
   }
@@ -613,25 +638,9 @@ static gboolean _double_click_timeout(gpointer user_data)
   return FALSE;
 }
 
-dt_input_device_t dt_register_input_driver(const dt_input_driver_definition_t *driver)
-{
-  dt_input_device_t id = 10;
-
-  GSList *device = darktable.control->input_devices;
-  while(device)
-  {
-    if(device->data == driver) return id;
-    device = device->next;
-    id += 10;
-  }
-
-  darktable.control->input_devices = g_slist_append(darktable.control->input_devices, (gpointer)driver);
-
-  return id;
-}
-
 void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mods)
 {
+  // FIXME put device id and key in list
   if(!g_slist_find(pressed_keys, GINT_TO_POINTER(key)))
   {
     bsc.key_device = id;
@@ -644,6 +653,7 @@ void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mod
 
     if(!pressed_keys)
     {
+      // FIXME if mods not coming from event (midi/gamepad) poll them here. mods == DT_MISSING_MODS
       bsc.mods = mods; // FIXME shift+num keys needs special treatment?
       bsc.click++; // only count number of double clicks on first key
 
@@ -663,8 +673,7 @@ void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mod
 
 void dt_shortcut_key_up(dt_input_device_t id, guint time, guint key, guint mods)
 {
-  direction = DT_DIRECTION_UP;
-
+  // FIXME clear bsc
   GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(key));
   if(stored_key)
   {
@@ -689,13 +698,6 @@ void dt_shortcut_key_up(dt_input_device_t id, guint time, guint key, guint mods)
   {
     fprintf(stderr, "[shortcut_dispatcher] released key wasn't stored\n");
   }
-}
-
-float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size)
-{
-
-
-  return 1;
 }
 
 gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_data)
@@ -738,52 +740,49 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     {
       int delta_y;
       dt_gui_get_scroll_unit_delta((GdkEventScroll *)event, &delta_y);
-      direction = delta_y < 0 ? DT_DIRECTION_UP : DT_DIRECTION_DOWN;
+      dt_shortcut_move(0, event->scroll.time, DT_SHORTCUT_MOVE_SCROLL, -delta_y);
     }
-
-    bsc.move = DT_SHORTCUT_MOVE_SCROLL;
-
-    dispatch_single_act();
     break;
   case GDK_MOTION_NOTIFY:
-    if(!(bsc.move == DT_SHORTCUT_MOVE_HORIZONTAL || bsc.move == DT_SHORTCUT_MOVE_VERTICAL))
+    if(bsc.move == DT_SHORTCUT_MOVE_NONE)
     {
       move_start_x = event->motion.x;
       move_start_y = event->motion.y;
       bsc.move = DT_SHORTCUT_MOVE_HORIZONTAL; // set fake direction so the start position doesn't keep resetting
+      break;
     }
 
-    const gdouble min_move = 10; // FIXME calculate multi-step move in one go (after implementation of separate dispatch_single_move)
     gdouble x_move = event->motion.x - move_start_x;
     gdouble y_move = event->motion.y - move_start_y;
-    if(fmax(fabs(x_move),fabs(y_move)) > min_move)
-    {
-      if(fabs(x_move) > 2 * fabs(y_move))
-      {
-        move_start_y = event->motion.y;
-        direction = x_move > 0
-                  ? (move_start_x += min_move, DT_DIRECTION_UP)
-                  : (move_start_x -= min_move, DT_DIRECTION_DOWN);
-        bsc.move = DT_SHORTCUT_MOVE_HORIZONTAL;
-      }
-      else if(fabs(y_move) > 2 * fabs(x_move))
-      {
-        move_start_x = event->motion.x;
-        direction = y_move < 0
-                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
-                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
-        bsc.move = DT_SHORTCUT_MOVE_VERTICAL;
-      }
-      else
-      {
-        move_start_x += min_move * x_move / fabs(y_move);
-        direction = y_move < 0
-                  ? (move_start_y -= min_move, DT_DIRECTION_UP)
-                  : (move_start_y += min_move, DT_DIRECTION_DOWN);
-        bsc.move = y_move * x_move < 0 ? DT_SHORTCUT_MOVE_SKEW : DT_SHORTCUT_MOVE_DIAGONAL;
-      }
+    const gdouble step_size = 10; // FIXME configurable, x & y separately
 
-      dispatch_single_act();
+    gdouble angle = x_move / (0.001 + y_move);
+
+    gdouble size = trunc(x_move / step_size);
+    if(size != 0 && fabs(angle) >= 2)
+    {
+      move_start_x += size * step_size;
+      move_start_y = event->motion.y;
+      dt_shortcut_move(0, event->motion.time, DT_SHORTCUT_MOVE_HORIZONTAL, size);
+    }
+    else
+    {
+      size = - trunc(y_move / step_size);
+      if(size != 0)
+      {
+        move_start_y -= size * step_size;
+        if(fabs(angle) < .5)
+        {
+          move_start_x = event->motion.x;
+          dt_shortcut_move(0, event->motion.time, DT_SHORTCUT_MOVE_VERTICAL, size);
+        }
+        else
+        {
+          move_start_x -= size * step_size * angle;
+          dt_shortcut_move(0, event->motion.time,
+                           angle < 0 ? DT_SHORTCUT_MOVE_SKEW : DT_SHORTCUT_MOVE_DIAGONAL, size);
+        }
+      }
     }
     break;
   case GDK_BUTTON_PRESS:
@@ -833,14 +832,22 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
 #define add_hint(format, ...) length += length >= sizeof(hint) ? 0 : snprintf(hint + length, sizeof(hint) - length, format, __VA_ARGS__)
 
       gchar *key_name = shortcut_key_move_name(s->key_device, s->key, s->mods, TRUE);
-      add_hint("\n%s: %s", _("shortcut"), key_name);
-      g_free(key_name);
-      if(s->move)
+      gchar *move_name = shortcut_key_move_name(s->move_device, s->move, DT_MOVE_NAME, TRUE);
+      if(*key_name)
       {
-        gchar *move_name = shortcut_key_move_name(s->key_device, s->move, DT_MOVE_NAME, TRUE);
-        add_hint(", %s", move_name);
-        g_free(move_name);
+        add_hint("\n%s: %s", _("shortcut"), key_name);
+        if(*move_name)
+        {
+          add_hint(", %s", move_name);
+        }
       }
+      else
+      {
+        add_hint("\n%s: %s", _("move"), move_name);
+      }
+      g_free(key_name);
+      g_free(move_name);
+
       if(s->click > DT_SHORTCUT_CLICK_SINGLE) add_hint(", %s %s", _(click_string[s->click]), _("click"));
 
       if(s->button) add_hint(", %s:", _("buttons"));
