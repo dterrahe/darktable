@@ -851,18 +851,16 @@ static gboolean poll_midi_devices(gpointer user_data)
 
           dt_shortcut_key_down(midi->id, event.timestamp, eventData1, eventChannel);
           break;
-
         case 0x8:  // note off
           dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", eventChannel, eventData1);
 
           dt_shortcut_key_up(midi->id, event.timestamp, eventData1, eventChannel);
           break;
-
         case 0xb:  // controllers, sustain
           dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d, Data2 %d\n", eventChannel, eventData1, eventData2);
-  //        aggregate_and_set_slider(midi, eventChannel, eventData1, eventData2);
-          break;
 
+          dt_shortcut_move(midi->id, event.timestamp, eventData1, eventData2 < 65 ? eventData2 : eventData2 - 128);
+          break;
         default:
           break;
       }

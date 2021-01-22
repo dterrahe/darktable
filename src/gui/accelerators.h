@@ -53,7 +53,7 @@ typedef struct dt_input_driver_definition_t
 dt_input_device_t dt_register_input_driver(const dt_input_driver_definition_t *driver);
 void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mods);
 void dt_shortcut_key_up(dt_input_device_t id, guint time, guint key, guint mods);
-float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size);
+float dt_shortcut_move(dt_input_device_t id, guint time, guint move, double size);
 
 typedef struct dt_accel_t
 {

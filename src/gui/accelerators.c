@@ -40,7 +40,8 @@ typedef struct dt_shortcut_t
     DT_SHORTCUT_CLICK_NONE,
     DT_SHORTCUT_CLICK_SINGLE,
     DT_SHORTCUT_CLICK_DOUBLE,
-    DT_SHORTCUT_CLICK_TRIPLE
+    DT_SHORTCUT_CLICK_TRIPLE,
+    DT_SHORTCUT_CLICK_LONG = 4
   } click;
   dt_input_device_t move_device;
   guint move;
@@ -96,6 +97,14 @@ typedef enum dt_shortcut_move_t
   DT_SHORTCUT_MOVE_UPDOWN,
   DT_SHORTCUT_MOVE_PGUPDOWN,
 } dt_shortcut_move_t;
+
+typedef struct dt_device_key_t
+{
+  dt_input_device_t key_device;
+  guint key;
+} dt_device_key_t;
+
+#define DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE 0
 
 const char *move_string[] = { "", N_("scroll"), N_("horizontal"), N_("vertical"), N_("diagonal"), N_("skew"),
                                   N_("leftright"), N_("updown"), N_("pgupdown"), NULL };
@@ -226,7 +235,10 @@ void dt_shortcuts_save(const gchar *file_name)
       if(s->button & (1 << GDK_BUTTON_PRIMARY  )) fprintf(f, ";%s", "left");
       if(s->button & (1 << GDK_BUTTON_MIDDLE   )) fprintf(f, ";%s", "middle");
       if(s->button & (1 << GDK_BUTTON_SECONDARY)) fprintf(f, ";%s", "right");
-      if(s->click > DT_SHORTCUT_CLICK_SINGLE) fprintf(f, ";%s", click_string[s->click]);
+      guint clean_click = s->click & ~DT_SHORTCUT_CLICK_LONG;
+      if(clean_click > DT_SHORTCUT_CLICK_SINGLE) fprintf(f, ";%s", click_string[clean_click]);
+      if(s->click >= DT_SHORTCUT_CLICK_LONG) fprintf(f, ";%s", _("long"));
+
       // FIXME long click
       if(s->move)
       {
@@ -324,6 +336,7 @@ void dt_shortcuts_load(const gchar *file_name)
               break;
             }
           if(click_string[click]) continue;
+          if(!strcmp(token, "long")) { s.click |= DT_SHORTCUT_CLICK_LONG; continue; }
 
           int move = 0;
           while(move_string[++move])
@@ -406,6 +419,7 @@ void dt_shortcuts_load(const gchar *file_name)
 static dt_shortcut_t bsc = { 0 };  // building shortcut
 static GSList *pressed_keys = NULL; // list of currently pressed keys
 static guint pressed_button = 0;
+static guint last_time = 0;
 
 static void define_new_mapping()
 {
@@ -488,14 +502,21 @@ static void define_new_mapping()
   g_free(file_name);
 }
 
-static void process_mapping(double move_size)
+static void process_mapping(void *device_key_ptr, void *move_size_ptr)
 {
-  dt_shortcut_t *bac = NULL;
+  if(device_key_ptr)
+  {
+    dt_device_key_t *device_key = device_key_ptr;
+    bsc.key_device = device_key->key_device;
+    bsc.key = device_key->key;
+  }
+
+  double move_size = *(double *)move_size_ptr;
 
   GSequenceIter *existing = g_sequence_lookup(darktable.control->shortcuts, &bsc, shortcut_compare_func, 0 /*view*/);
   if(existing)
   {
-    bac = g_sequence_get(existing);
+    dt_shortcut_t *bac = g_sequence_get(existing);
 
     GtkWidget *widget = NULL;
     if(bac->instance)
@@ -594,14 +615,23 @@ static void process_mapping(double move_size)
       dt_accel_widget_toast(widget);
     }
   }
+
+  bsc.key_device = DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE;
+  bsc.key = 0;
 }
 
-float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size)
+gint cmp_key(gconstpointer a, gconstpointer b)
+{
+  const dt_device_key_t *key_a = a;
+  const dt_device_key_t *key_b = b;
+  return key_a->key_device != key_b->key_device || key_a->key != key_b->key;
+}
+
+float dt_shortcut_move(dt_input_device_t id, guint time, guint move, double size)
 {
   bsc.move_device = id;
   bsc.move = move;
   bsc.speed = 1.0;
-
 
   if(darktable.control->mapping_widget)
   {
@@ -610,52 +640,67 @@ float dt_shortcut_move(dt_input_device_t id, guint time, guint move, float size)
   else
   {
     if(pressed_keys)
-      for(GSList *current_key = pressed_keys; current_key; current_key = current_key->next)
-      {
-        // FIXME get device id from list
-        bsc.key = GPOINTER_TO_INT(current_key->data); // use same mods for all
-        process_mapping(size);
-        // FIXME in case of multiple keys also process the double pressing key?
-      }
+      g_slist_foreach(pressed_keys, process_mapping, &size);
     else
-      process_mapping(size);
+      process_mapping(NULL, &size);
   }
+
+  bsc.move_device = 0;
+  bsc.move = DT_SHORTCUT_MOVE_NONE;
 
   return 0; // FIXME when requesting value, if any keys pressed, going to get wrong values. Maybe do an (extra) call for bsc.key = 0 and move = 0 to retrieve position to return
 }
 
-static gboolean _double_click_timeout(gpointer user_data)
+static guint press_timeout_source = 0;
+
+static gboolean _key_up_delayed(gpointer do_key)
 {
-  if(bsc.click == GPOINTER_TO_INT(user_data))
-  {
-    if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+  if(do_key) dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, 0, DT_SHORTCUT_MOVE_NONE, 1);
 
-    dt_shortcut_move(0, 0, 0, 1);
+  if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
 
-    bsc.click = DT_SHORTCUT_CLICK_NONE;
-  }
+  bsc.click = DT_SHORTCUT_CLICK_NONE;
 
+  press_timeout_source = 0;
+  return FALSE;
+}
+
+static guint click_timeout_source = 0;
+
+static gboolean _button_release_delayed(gpointer user_data)
+{
+  dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, 0, DT_SHORTCUT_MOVE_NONE, 1);
+
+  bsc.click = DT_SHORTCUT_CLICK_NONE;
+  bsc.button = pressed_button;
+
+  click_timeout_source = 0;
   return FALSE;
 }
 
 void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mods)
 {
-  // FIXME put device id and key in list
-  if(!g_slist_find(pressed_keys, GINT_TO_POINTER(key)))
+  dt_device_key_t this_key = { id, key };
+  if(!g_slist_find_custom(pressed_keys, &this_key, cmp_key))
   {
-    bsc.key_device = id;
-    bsc.key = key;
-    pressed_button = 0;
-    bsc.button = 0;
-    bsc.move = DT_SHORTCUT_MOVE_NONE;
-    bsc.instance = 0;
-    bsc.speed = 1.0;
+    if(press_timeout_source)
+    {
+      g_source_remove(press_timeout_source);
+      press_timeout_source = 0;
+    }
+
+    int delay = 0;
+    g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
 
     if(!pressed_keys)
     {
       // FIXME if mods not coming from event (midi/gamepad) poll them here. mods == DT_MISSING_MODS
-      bsc.mods = mods; // FIXME shift+num keys needs special treatment?
-      bsc.click++; // only count number of double clicks on first key
+      bsc.mods = mods;
+      if(id == bsc.key_device && key == bsc.key &&
+         time < last_time + delay && bsc.click < DT_SHORTCUT_CLICK_TRIPLE)
+        bsc.click++;
+      else
+        bsc.click = DT_SHORTCUT_CLICK_SINGLE;
 
       GdkCursor *cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "all-scroll");
       gdk_seat_grab(gdk_display_get_default_seat(gdk_display_get_default()),
@@ -665,7 +710,15 @@ void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mod
       g_object_unref(cursor);
     }
 
-    pressed_keys = g_slist_prepend(pressed_keys, GINT_TO_POINTER(key));
+    last_time = time;
+    bsc.key_device = id;
+    bsc.key = key;
+    bsc.button = pressed_button = 0;
+    bsc.instance = 0;
+
+    dt_device_key_t *new_key = calloc(1, sizeof(dt_device_key_t));
+    *new_key = this_key;
+    pressed_keys = g_slist_prepend(pressed_keys, new_key);
   }
   // key hold (CTRL-W for example) should fire without key being released if shortcut is marked as "key hold" (or something)??
   // otherwise only fire when key is released (because we are expecting scroll or something)
@@ -673,24 +726,33 @@ void dt_shortcut_key_down(dt_input_device_t id, guint time, guint key, guint mod
 
 void dt_shortcut_key_up(dt_input_device_t id, guint time, guint key, guint mods)
 {
-  // FIXME clear bsc
-  GSList *stored_key = g_slist_find(pressed_keys, GINT_TO_POINTER(key));
+  dt_device_key_t this_key = { id, key };
+
+  GSList *stored_key = g_slist_find_custom(pressed_keys, &this_key, cmp_key);
   if(stored_key)
   {
-    pressed_keys = g_slist_remove_link(pressed_keys, stored_key);
+    g_free(stored_key->data);
+    pressed_keys = g_slist_delete_link(pressed_keys, stored_key);
 
     if(!pressed_keys)
     {
-      if(!bsc.button && bsc.move == DT_SHORTCUT_MOVE_NONE)
+      if(bsc.key_device == id && bsc.key == key)
       {
         int delay = 0;
         g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
-        g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
+
+        guint passed_time = time - last_time;
+        if(passed_time < delay && bsc.click < DT_SHORTCUT_CLICK_TRIPLE)
+          press_timeout_source = g_timeout_add(delay - passed_time, _key_up_delayed, GINT_TO_POINTER(TRUE));
+        else
+        {
+          if(passed_time > delay) bsc.click |= DT_SHORTCUT_CLICK_LONG;
+          _key_up_delayed(GINT_TO_POINTER(passed_time < 2 * delay)); // call immediately
+        }
       }
       else
       {
-        gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
-        bsc.click = DT_SHORTCUT_CLICK_NONE;
+        _key_up_delayed(NULL);
       }
     }
   }
@@ -714,13 +776,15 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
   case GDK_KEY_PRESS:
     if(event->key.is_modifier) return FALSE;
 
-    dt_shortcut_key_down(0, event->key.time, event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
+    dt_shortcut_key_down(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->key.time,
+                         event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
 
     break;
   case GDK_KEY_RELEASE:
     if(event->key.is_modifier) return FALSE;
 
-    dt_shortcut_key_up(0, event->key.time, event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
+    dt_shortcut_key_up(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->key.time,
+                       event->key.keyval, event->key.state & gtk_accelerator_get_default_mod_mask());
 
     break;
   case GDK_GRAB_BROKEN:
@@ -731,7 +795,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     if(!event->focus_change.in)
     {
       gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
-      g_slist_free(pressed_keys);
+      g_slist_free_full(pressed_keys, g_free);
       pressed_keys = NULL;
       bsc.click = DT_SHORTCUT_CLICK_NONE;
     }
@@ -740,7 +804,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     {
       int delta_y;
       dt_gui_get_scroll_unit_delta((GdkEventScroll *)event, &delta_y);
-      dt_shortcut_move(0, event->scroll.time, DT_SHORTCUT_MOVE_SCROLL, -delta_y);
+      dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->scroll.time, DT_SHORTCUT_MOVE_SCROLL, - delta_y);
     }
     break;
   case GDK_MOTION_NOTIFY:
@@ -763,7 +827,7 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     {
       move_start_x += size * step_size;
       move_start_y = event->motion.y;
-      dt_shortcut_move(0, event->motion.time, DT_SHORTCUT_MOVE_HORIZONTAL, size);
+      dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->motion.time, DT_SHORTCUT_MOVE_HORIZONTAL, size);
     }
     else
     {
@@ -774,12 +838,12 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
         if(fabs(angle) < .5)
         {
           move_start_x = event->motion.x;
-          dt_shortcut_move(0, event->motion.time, DT_SHORTCUT_MOVE_VERTICAL, size);
+          dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->motion.time, DT_SHORTCUT_MOVE_VERTICAL, size);
         }
         else
         {
           move_start_x -= size * step_size * angle;
-          dt_shortcut_move(0, event->motion.time,
+          dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, event->motion.time,
                            angle < 0 ? DT_SHORTCUT_MOVE_SKEW : DT_SHORTCUT_MOVE_DIAGONAL, size);
         }
       }
@@ -790,6 +854,12 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     bsc.button = pressed_button;
     bsc.click = DT_SHORTCUT_CLICK_SINGLE;
     bsc.move = DT_SHORTCUT_MOVE_NONE;
+    last_time = event->button.time;
+    if(click_timeout_source)
+    {
+      g_source_remove(click_timeout_source);
+      click_timeout_source = 0;
+    }
     break;
   case GDK_DOUBLE_BUTTON_PRESS:
     bsc.click = DT_SHORTCUT_CLICK_DOUBLE;
@@ -798,21 +868,33 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w, GdkEvent *event, gpointer user_dat
     bsc.click = DT_SHORTCUT_CLICK_TRIPLE;
     break;
   case GDK_BUTTON_RELEASE:
-    // maybe; check if there's a shortcut defined for double/triple (could be fallback?); if not -> no delay
+    // FIXME; check if there's a shortcut defined for double/triple (could be fallback?); if not -> no delay
     // maybe even action on PRESS rather than RELEASE
-    if(bsc.move == DT_SHORTCUT_MOVE_NONE) // FIXME be careful!!; we are receiving presses and releases twice!?!
-    {
-      int delay = 0;
-      g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
-      g_timeout_add(delay, _double_click_timeout, GINT_TO_POINTER(bsc.click));
-    }
+    // FIXME be careful!!; we seem to be receiving presses and releases twice!?!
     pressed_button &= ~(1 << event->button.button);
+
+    int delay = 0;
+    g_object_get(gtk_settings_get_default(), "gtk-double-click-time", &delay, NULL);
+
+    guint passed_time = event->button.time - last_time;
+    if(passed_time < delay && bsc.click < DT_SHORTCUT_CLICK_TRIPLE)
+    {
+      if(!click_timeout_source)
+        click_timeout_source = g_timeout_add(delay - passed_time, _button_release_delayed, NULL);
+    }
+    else
+    {
+      if(passed_time > delay)
+        bsc.click |= DT_SHORTCUT_CLICK_LONG;
+      if(passed_time < 2 * delay)
+        _button_release_delayed(NULL); // call immediately
+    }
     break;
   default:
     break;
   }
 
-  return FALSE; // is return type used? doesn't seem so (maybe because of grab)
+  return FALSE; // FIXME is return type used? doesn't seem so (maybe because of grab)
 }
 
 static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
@@ -829,31 +911,38 @@ static gboolean _shortcut_tooltip_callback(GtkWidget *widget, gint x, gint y, gb
     dt_shortcut_t *s = g_sequence_get(iter);
     if(s->action == action)
     {
-#define add_hint(format, ...) length += length >= sizeof(hint) ? 0 : snprintf(hint + length, sizeof(hint) - length, format, __VA_ARGS__)
+#define add_hint(format, ...) length += length >= sizeof(hint) ? 0 : snprintf(hint + length, sizeof(hint) - length, format, ##__VA_ARGS__)
 
       gchar *key_name = shortcut_key_move_name(s->key_device, s->key, s->mods, TRUE);
       gchar *move_name = shortcut_key_move_name(s->move_device, s->move, DT_MOVE_NAME, TRUE);
       if(*key_name)
       {
         add_hint("\n%s: %s", _("shortcut"), key_name);
-        if(*move_name)
-        {
-          add_hint(", %s", move_name);
-        }
       }
       else
       {
         add_hint("\n%s: %s", _("move"), move_name);
       }
-      g_free(key_name);
-      g_free(move_name);
 
-      if(s->click > DT_SHORTCUT_CLICK_SINGLE) add_hint(", %s %s", _(click_string[s->click]), _("click"));
-
-      if(s->button) add_hint(", %s:", _("buttons"));
+      if(s->button) add_hint(", ");
       if(s->button & (1 << GDK_BUTTON_PRIMARY  )) add_hint(" %s", _("left"));
       if(s->button & (1 << GDK_BUTTON_MIDDLE   )) add_hint(" %s", _("middle"));
       if(s->button & (1 << GDK_BUTTON_SECONDARY)) add_hint(" %s", _("right"));
+
+      guint clean_click = s->click & ~DT_SHORTCUT_CLICK_LONG;
+      if(clean_click > DT_SHORTCUT_CLICK_SINGLE) add_hint(" %s", _(click_string[clean_click]));
+      if(s->click >= DT_SHORTCUT_CLICK_LONG) add_hint(" %s", _("long"));
+      if(s->button)
+        add_hint(" %s", _("click"));
+      else if(s->click > DT_SHORTCUT_CLICK_SINGLE)
+        add_hint(" %s", _("press"));
+
+      if(*move_name && *key_name)
+      {
+        add_hint(", %s", move_name);
+      }
+      g_free(key_name);
+      g_free(move_name);
 
       if(s->instance == 1) add_hint(", %s", _("first instance"));
       else
