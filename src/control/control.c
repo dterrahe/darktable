@@ -48,7 +48,8 @@ void dt_control_init(dt_control_t *s)
   s->actions_global = (dt_action_t){ "global", _("global"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_views };
   s->actions_views = (dt_action_t){ "views", _("views"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_libs };
   s->actions_libs = (dt_action_t){ "lib", C_("accel", "utility modules"), DT_ACTION_TYPE_CATEGORY, .next = &s->actions_iops };
-  s->actions_iops = (dt_action_t){ "iop", C_("accel", "processing modules"), DT_ACTION_TYPE_CATEGORY };
+  s->actions_iops = (dt_action_t){ "iop", C_("accel", "processing modules"), DT_ACTION_TYPE_CATEGORY, .target = &s->actions_blend };
+  s->actions_blend = (dt_action_t){ "blend", C_("accel", "blending"), DT_ACTION_TYPE_CATEGORY, .owner = &s->actions_iops };
   s->actions = &s->actions_global;
 
   s->widgets = g_hash_table_new(NULL, NULL);

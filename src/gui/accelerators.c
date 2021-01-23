@@ -1026,7 +1026,6 @@ dt_action_t *dt_action_locate(dt_action_t *owner, gchar **path)
 
 dt_action_t *dt_action_define(dt_action_t *owner, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
 {
-  // add to module_so actions list
   // split on `; find any sections or if not found, create (at start)
   gchar **split_path = g_strsplit(path, "`", 6);
   dt_action_t *ac = dt_action_locate(owner, split_path);
@@ -1050,14 +1049,14 @@ dt_action_t *dt_action_define(dt_action_t *owner, const gchar *path, gboolean lo
   return ac;
 }
 
-
 void dt_action_define_iop(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
 {
   // add to module_so actions list
-  // split on `; find any sections or if not found, create (at start)
-  dt_action_t *ac = dt_action_define(&self->so->actions, path, local, accel_key, mods, widget);
+  dt_action_t *ac = strstr(path,"blend`") == path
+                  ? dt_action_define(&darktable.control->actions_blend, path + strlen("blend`"), local, accel_key, mods, widget)
+                  : dt_action_define(&self->so->actions, path, local, accel_key, mods, widget);
 
-  // for iop (to support multi-instance)
+  // to support multi-instance, also save per instance widget list
   dt_action_widget_t *referral = g_malloc0(sizeof(dt_action_widget_t));
   referral->action = ac;
   referral->widget = widget;
