@@ -502,16 +502,9 @@ static void define_new_mapping()
   g_free(file_name);
 }
 
-static void process_mapping(void *device_key_ptr, void *move_size_ptr)
+static float process_mapping(float move_size)
 {
-  if(device_key_ptr)
-  {
-    dt_device_key_t *device_key = device_key_ptr;
-    bsc.key_device = device_key->key_device;
-    bsc.key = device_key->key;
-  }
-
-  double move_size = *(double *)move_size_ptr;
+  float return_value = 0;
 
   GSequenceIter *existing = g_sequence_lookup(darktable.control->shortcuts, &bsc, shortcut_compare_func, 0 /*view*/);
   if(existing)
@@ -598,22 +591,23 @@ static void process_mapping(void *device_key_ptr, void *move_size_ptr)
         d->is_dragging = 1;
         dt_bauhaus_slider_set(widget, value + move_size * step * multiplier);
         d->is_dragging = 0;
+
+        return_value = d->pos +
+                     ( d->min == -d->max ? 2 :
+                     ( d->min == 0 && (d->max == 1 || d->max == 100) ? 4 : 0 ));
       }
       else
       {
-        const int currentval = dt_bauhaus_combobox_get(widget);
+        const int current_value = dt_bauhaus_combobox_get(widget);
 
-        if(move_size > 0)
-        {
-          const int nextval = currentval + 1 >= dt_bauhaus_combobox_length(widget) ? 0 : currentval + 1;
-          dt_bauhaus_combobox_set(widget, nextval);
-        }
-        else
-        {
-          const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
-          dt_bauhaus_combobox_set(widget, prevval);
-        }
+        const int new_value = move_size > 0 ? MIN(current_value + 1, dt_bauhaus_combobox_length(widget) - 1)
+                                            : MAX(current_value - 1, 0);
+
+        dt_bauhaus_combobox_set(widget, new_value);
+
         g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+
+        return_value = - 1 - new_value;
       }
       dt_accel_widget_toast(widget);
     }
@@ -621,6 +615,17 @@ static void process_mapping(void *device_key_ptr, void *move_size_ptr)
 
   bsc.key_device = DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE;
   bsc.key = 0;
+
+  return return_value;
+}
+
+static void process_each_mapping(void *device_key_ptr, void *move_size_ptr)
+{
+  dt_device_key_t *device_key = device_key_ptr;
+  bsc.key_device = device_key->key_device;
+  bsc.key = device_key->key;
+
+  process_mapping(*(double *)move_size_ptr);
 }
 
 gint cmp_key(gconstpointer a, gconstpointer b)
@@ -636,6 +641,8 @@ float dt_shortcut_move(dt_input_device_t id, guint time, guint move, double size
   bsc.move = move;
   bsc.speed = 1.0;
 
+  float return_value = 0;
+
   if(darktable.control->mapping_widget)
   {
     define_new_mapping();
@@ -643,15 +650,15 @@ float dt_shortcut_move(dt_input_device_t id, guint time, guint move, double size
   else
   {
     if(pressed_keys)
-      g_slist_foreach(pressed_keys, process_mapping, &size);
+      g_slist_foreach(pressed_keys, process_each_mapping, &size);
     else
-      process_mapping(NULL, &size);
+      return_value = process_mapping(size);
   }
 
   bsc.move_device = 0;
   bsc.move = DT_SHORTCUT_MOVE_NONE;
 
-  return 0; // FIXME when requesting value, if any keys pressed, going to get wrong values. Maybe do an (extra) call for bsc.key = 0 and move = 0 to retrieve position to return
+  return return_value; // FIXME when requesting value, if any keys pressed, going to get wrong values. Maybe do an (extra) call for bsc.key = 0 and move = 0 to retrieve position to return
 }
 
 static guint press_timeout_source = 0;
