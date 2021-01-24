@@ -594,7 +594,10 @@ static void process_mapping(void *device_key_ptr, void *move_size_ptr)
         if(fabsf(step*multiplier) < min_visible)
           multiplier = min_visible / fabsf(step);
 
+        dt_bauhaus_slider_data_t *d = &bhw->data.slider;
+        d->is_dragging = 1;
         dt_bauhaus_slider_set(widget, value + move_size * step * multiplier);
+        d->is_dragging = 0;
       }
       else
       {
@@ -610,8 +613,8 @@ static void process_mapping(void *device_key_ptr, void *move_size_ptr)
           const int prevval = currentval - 1 < 0 ? dt_bauhaus_combobox_length(widget) : currentval - 1;
           dt_bauhaus_combobox_set(widget, prevval);
         }
+        g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
       }
-      g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
       dt_accel_widget_toast(widget);
     }
   }
@@ -1026,6 +1029,7 @@ dt_action_t *dt_action_locate(dt_action_t *owner, gchar **path)
 
 dt_action_t *dt_action_define(dt_action_t *owner, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
 {
+  // add to module_so actions list
   // split on `; find any sections or if not found, create (at start)
   gchar **split_path = g_strsplit(path, "`", 6);
   dt_action_t *ac = dt_action_locate(owner, split_path);
@@ -1048,6 +1052,7 @@ dt_action_t *dt_action_define(dt_action_t *owner, const gchar *path, gboolean lo
 
   return ac;
 }
+
 
 void dt_action_define_iop(dt_iop_module_t *self, const gchar *path, gboolean local, guint accel_key, GdkModifierType mods, GtkWidget *widget)
 {
