@@ -239,8 +239,7 @@ void dt_shortcuts_save(const gchar *file_name)
       if(clean_click > DT_SHORTCUT_CLICK_SINGLE) fprintf(f, ";%s", click_string[clean_click]);
       if(s->click >= DT_SHORTCUT_CLICK_LONG) fprintf(f, ";%s", _("long"));
 
-      // FIXME long click
-      if(s->move)
+      if(s->move_device || s->move)
       {
         gchar *move_name = shortcut_key_move_name(s->move_device, s->move, DT_MOVE_NAME, FALSE);
         fprintf(f, ";%s", move_name);
@@ -288,11 +287,12 @@ void dt_shortcuts_load(const gchar *file_name)
         }
         char *act_end = act_start + strcspn(act_start, ";");
 
-        dt_shortcut_t s = { .speed = 1, .click = DT_SHORTCUT_CLICK_SINGLE };
+        dt_shortcut_t s = { .speed = 1 };
 
         char *token = strtok(line, "=;/");
         if(strcmp(token, "None"))
         {
+          s.click = DT_SHORTCUT_CLICK_SINGLE;
           gtk_accelerator_parse(token, &s.key, &s.mods);
           if(!s.key)
           {
@@ -504,7 +504,7 @@ static void define_new_mapping()
 
 static float process_mapping(float move_size)
 {
-  float return_value = 0;
+  float return_value = NAN;
 
   GSequenceIter *existing = g_sequence_lookup(darktable.control->shortcuts, &bsc, shortcut_compare_func, 0 /*view*/);
   if(existing)
@@ -579,18 +579,23 @@ static float process_mapping(float move_size)
 
       if(bhw->type == DT_BAUHAUS_SLIDER)
       {
-        float value = dt_bauhaus_slider_get(widget);
-        float step = dt_bauhaus_slider_get_step(widget);
-        float multiplier = dt_accel_get_slider_scale_multiplier() * bac->speed;
-
-        const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
-        if(fabsf(step*multiplier) < min_visible)
-          multiplier = min_visible / fabsf(step);
-
         dt_bauhaus_slider_data_t *d = &bhw->data.slider;
-        d->is_dragging = 1;
-        dt_bauhaus_slider_set(widget, value + move_size * step * multiplier);
-        d->is_dragging = 0;
+        if(move_size != 0)
+        {
+          float value = dt_bauhaus_slider_get(widget);
+          float step = dt_bauhaus_slider_get_step(widget);
+          float multiplier = dt_accel_get_slider_scale_multiplier() * bac->speed;
+
+          const float min_visible = powf(10.0f, -dt_bauhaus_slider_get_digits(widget));
+          if(fabsf(step*multiplier) < min_visible)
+            multiplier = min_visible / fabsf(step);
+
+          d->is_dragging = 1;
+          dt_bauhaus_slider_set(widget, value + move_size * step * multiplier);
+          d->is_dragging = 0;
+
+          dt_accel_widget_toast(widget);
+        }
 
         return_value = d->pos +
                      ( d->min == -d->max ? 2 :
@@ -598,23 +603,24 @@ static float process_mapping(float move_size)
       }
       else
       {
-        const int current_value = dt_bauhaus_combobox_get(widget);
+        int value = dt_bauhaus_combobox_get(widget);
 
-        const int new_value = move_size > 0 ? MIN(current_value + 1, dt_bauhaus_combobox_length(widget) - 1)
-                                            : MAX(current_value - 1, 0);
+        if(move_size != 0)
+        {
+          value = CLAMP(value + move_size, 0, dt_bauhaus_combobox_length(widget) - 1);
 
-        dt_bauhaus_combobox_set(widget, new_value);
+          dt_bauhaus_combobox_set(widget, value);
 
-        g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+          g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
 
-        return_value = - 1 - new_value;
+          dt_accel_widget_toast(widget);
+        }
+
+        return_value = - 1 - value;
       }
-      dt_accel_widget_toast(widget);
+
     }
   }
-
-  bsc.key_device = DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE;
-  bsc.key = 0;
 
   return return_value;
 }
@@ -667,9 +673,15 @@ static gboolean _key_up_delayed(gpointer do_key)
 {
   if(do_key) dt_shortcut_move(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, 0, DT_SHORTCUT_MOVE_NONE, 1);
 
-  if(!pressed_keys) gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
+  if(!pressed_keys)
+  {
+    gdk_seat_ungrab(gdk_display_get_default_seat(gdk_display_get_default()));
 
-  bsc.click = DT_SHORTCUT_CLICK_NONE;
+    bsc.key_device = DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE;
+    bsc.key = 0;
+    bsc.click = DT_SHORTCUT_CLICK_NONE;
+    bsc.mods = 0;
+  }
 
   press_timeout_source = 0;
   return FALSE;

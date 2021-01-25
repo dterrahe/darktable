@@ -26,7 +26,7 @@
 #include "common/file_location.h"
 #include <fcntl.h>
 
-char midi_devices_default[] = "portmidi,alsa,/dev/midi1,/dev/midi2,/dev/midi3,/dev/midi4";
+char midi_devices_default[] = "*";
 
 DT_MODULE(1)
 
@@ -60,30 +60,6 @@ int position()
   return 1;
 }
 
-typedef struct dt_midi_knob_t
-{
-  gint group;
-  gint channel;
-  gint key;
-
-  dt_accel_t *accelerator;
-
-  gint encoding;
-#define MIDI_ABSOLUTE 0
-  gboolean locked;
-  float acceleration;
-} dt_midi_knob_t;
-
-typedef struct dt_midi_note_t
-{
-  gint group;
-  gint channel;
-  gint key;
-
-  guint accelerator_key;
-  GdkModifierType accelerator_mods;
-} dt_midi_note_t;
-
 typedef struct midi_device
 {
   dt_input_device_t   id;
@@ -94,7 +70,7 @@ typedef struct midi_device
   gboolean            syncing;
   gint                encoding;
   gint8               last_known[128];
-  gint8               channel;
+  gint8               last_channel, last_type, last_data1, last_data2;
 } midi_device;
 
 const char *note_names[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B", NULL };
@@ -150,45 +126,92 @@ void midi_write(midi_device *midi, gint channel, gint type, gint key, gint veloc
   }
 }
 
-gint interpret_move(dt_midi_knob_t *k, gint velocity)
+gint calculate_move(midi_device *midi, gint controller, gint velocity)
 {
-  if(k)
+  switch(midi->encoding)
   {
-    switch(k->encoding)
+  case 0: // absolute
+    // FIXME: prevent jumps (with large stepsize; need to account for case where last_known
+    // hasn't arrived at controller yet before next update; so move should be with respect to previous value)
+    // FIXME: recognise relative moves and set midi->encoding accordingly. Could be 5 identical (down) moves.
+    if(velocity == 0) return -1e6; // try to reach min
+    if(velocity == 127) return +1e6; // try to reach max
+    return velocity - midi->last_known[controller];
+    break;
+  case 127: // 2s Complement
+    if(velocity < 65)
+      return velocity;
+    else
+      return velocity - 128;
+    break;
+  case 63: // Offset
+    return velocity - 64;
+    break;
+  case 33: // Sign
+    if(velocity < 32)
+      return velocity;
+    else
+      return 32 - velocity;
+    break;
+  case 15: // Offset 5 bit
+    return velocity - 16;
+    break;
+  case 65: // Sign 6 bit (x-touch mini in MC mode)
+    if(velocity < 64)
+      return velocity;
+    else
+      return 64 - velocity;
+    break;
+  default:
+    return 0;
+    break;
+  }
+}
+
+void update_with_move(midi_device *midi, PmTimestamp timestamp, gint controller, float move)
+{
+  float new_position = dt_shortcut_move(midi->id, timestamp, controller, move);
+
+  if(strstr(midi->info->name, "X-TOUCH MINI") && controller >= 1 && controller <= 18)
+  {
+    // Light pattern always for 1-8 range, but CC=1-8 (bank A) or 11-18 (bank B).
+    // Can't determine which with certainty. Guess from last received command.
+    if( (controller <=  8 && (midi->last_type == 0xb ? midi->last_data1 <=  9 : midi->last_data1 <= 23)) ||
+        (controller >= 11 && (midi->last_type == 0xb ? midi->last_data1 >= 10 : midi->last_data1 >= 24)) )
     {
-      case 127: // 2s Complement
-        if(velocity < 65)
-          return velocity;
-        else
-          return velocity - 128;
-        break;
-      case 63: // Offset
-        return velocity - 64;
-        break;
-      case 33: // Sign
-        if(velocity < 32)
-          return velocity;
-        else
-          return 32 - velocity;
-        break;
-      case 15: // Offset 5 bit
-        return velocity - 16;
-        break;
-      case 65: // Sign 6 bit (x-touch mini in MC mode)
-        if(velocity < 64)
-          return velocity;
-        else
-          return 64 - velocity;
-        break;
-      default:
-        return 0;
-        break;
+      if(isnan(new_position))
+        midi_write(midi, 0, 0xB, controller % 10, 0); // off
+      else if(new_position >= 4)
+        midi_write(midi, 0, 0xB, controller % 10, 2); // fan
+      else if(new_position >= 2)
+        midi_write(midi, 0, 0xB, controller % 10, 4); // trim
+      else
+        midi_write(midi, 0, 0xB, controller % 10, 1); // pan
     }
   }
-  else
+
+  int rotor_position = 0;
+  if(new_position >= 0)
   {
-    return 0;
+    new_position = fmodf(new_position, 2.0);
+    if(new_position != 0.0)
+    {
+      if(new_position == 1.0)
+        rotor_position = 127;
+      else
+      {
+        rotor_position = 2.0 + new_position * 124.0; // 2-125
+      }
+    }
   }
+  else if(!isnan(new_position))
+  {
+    int c = - new_position - 1;
+    rotor_position = c > 11 ? c+107 : c*127./12.+1.25;
+  }
+
+  midi->last_known[controller] = rotor_position;
+  midi_write(midi, midi->last_channel, 0xB, controller, rotor_position);
 }
 
 static gboolean poll_midi_devices(gpointer user_data)
@@ -211,7 +234,10 @@ static gboolean poll_midi_devices(gpointer user_data)
       int eventType = eventStatus >> 4;
       int eventChannel = eventStatus & 0x0F;
 
-      midi->channel = eventChannel;
+      midi->last_channel = eventChannel;
+      midi->last_type = eventType;
+      midi->last_data1 = eventData1;
+      midi->last_data2 = eventData2;
 
       if (eventType == 0x9 && // note on
           eventData2 == 0)
@@ -221,59 +247,25 @@ static gboolean poll_midi_devices(gpointer user_data)
 
       switch (eventType)
       {
-        case 0x9:  // note on
-          dt_print(DT_DEBUG_INPUT, "Note On: Channel %d, Data1 %d\n", eventChannel, eventData1);
+      case 0x9:  // note on
+        dt_print(DT_DEBUG_INPUT, "Note On: Channel %d, Data1 %d\n", eventChannel, eventData1);
 
-          dt_shortcut_key_down(midi->id, event.timestamp, eventData1, eventChannel);
-          break;
-        case 0x8:  // note off
-          dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", eventChannel, eventData1);
+        dt_shortcut_key_down(midi->id, event.timestamp, eventData1, 0);
+        break;
+      case 0x8:  // note off
+        dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", eventChannel, eventData1);
 
-          dt_shortcut_key_up(midi->id, event.timestamp, eventData1, eventChannel);
-          break;
-        case 0xb:  // controllers, sustain
-          dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d, Data2 %d\n", eventChannel, eventData1, eventData2);
+        dt_shortcut_key_up(midi->id, event.timestamp, eventData1, 0);
+        break;
+      case 0xb:  // controllers, sustain
+        dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d, Data2 %d\n", eventChannel, eventData1, eventData2);
 
-          // FIXME read all with same controller, aggregate (or just take last if absolute) and only at end send
+        // FIXME read all with same controller, aggregate (or just take last if absolute, because updates won't have been sent to device) and only at end process
+        update_with_move(midi, event.timestamp, eventData1, calculate_move(midi, eventData1, eventData2));
 
-// relative         dt_shortcut_move(midi->id, event.timestamp, eventData1, eventData2 < 65 ? eventData2 : eventData2 - 128);
-          float new_position = dt_shortcut_move(midi->id, event.timestamp, eventData1, eventData2 - midi->last_known[eventData1]);
-
-          if(strstr(midi->info->name, "X-TOUCH MINI"))
-          {
-            if(new_position >= 4)
-              midi_write(midi, 0, 0xB, eventData1, 2); // fan
-            else if(new_position >= 2)
-              midi_write(midi, 0, 0xB, eventData1, 4); // trim
-            else
-              midi_write(midi, 0, 0xB, eventData1, 1); // pan
-          }
-
-          int rotor_position = 0;
-          if(new_position >= 0)
-          {
-            new_position = fmodf(new_position, 2.0);
-            if(new_position != 0.0)
-            {
-              if(new_position == 1.0)
-                rotor_position = 127;
-              else
-              {
-                rotor_position = 2.0 + new_position * 124.0; // 2-125
-              }
-            }
-          }
-          else
-          {
-            int c = - new_position - 1;
-            rotor_position = c > 11 ? c+107 : c*127./12.+1.25;
-          }
-
-          midi->last_known[eventData1] = rotor_position;
-          midi_write(midi, midi->channel, 0xB, eventData1, rotor_position);
-          break;
-        default:
-          break;
+        break;
+      default:
+        break;
       }
     }
 
@@ -359,8 +351,17 @@ void midi_close_devices(dt_lib_module_t *self)
   Pm_Terminate();
 }
 
-static void callback_image_changed(gpointer instance, gpointer data)
+static void callback_image_changed(gpointer instance, gpointer user_data)
 {
+  GSList *devices = (GSList *)((dt_lib_module_t *)user_data)->data;
+  while(devices)
+  {
+    midi_device *midi = devices->data;
+
+    for(int i = 0; i < 128; i++) update_with_move(midi, 0, i, 0);
+
+    devices = devices->next;
+  }
 }
 
 static void callback_view_changed(gpointer instance, dt_view_t *old_view, dt_view_t *new_view, gpointer data)

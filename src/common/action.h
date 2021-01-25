@@ -18,6 +18,8 @@
 
 #pragma once
 
+#define SHORTCUTS_TRANSITION
+
 #include <glib.h>
 
 typedef enum dt_action_type_t
