@@ -589,7 +589,7 @@ static float process_mapping(float move_size)
       if(bhw->type == DT_BAUHAUS_SLIDER)
       {
         dt_bauhaus_slider_data_t *d = &bhw->data.slider;
-        if(move_size != 0)
+        if(move_size != 0 && gtk_widget_get_visible(widget) && gtk_widget_get_visible(gtk_widget_get_parent(widget)))
         {
           float value = dt_bauhaus_slider_get(widget);
           float step = dt_bauhaus_slider_get_step(widget);
@@ -614,9 +614,9 @@ static float process_mapping(float move_size)
       {
         int value = dt_bauhaus_combobox_get(widget);
 
-        if(move_size != 0)
+        if(move_size != 0 && gtk_widget_get_visible(widget) && gtk_widget_get_visible(gtk_widget_get_parent(widget)))
         {
-          value = MAX(value + move_size, 0);
+          value = CLAMP(value + move_size, 0, dt_bauhaus_combobox_length(widget) - 1);
 
           ++darktable.gui->reset;
           dt_bauhaus_combobox_set(widget, value);
