@@ -73,7 +73,7 @@ typedef struct midi_device
   gboolean            syncing;
   gint                encoding;
   gint8               last_known[128];
-  gint8               last_type, last_data1;
+  gint8               last_type, last_data1, num_identical;
 } midi_device;
 
 const char *note_names[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B", NULL };
@@ -133,16 +133,6 @@ gint calculate_move(midi_device *midi, gint controller, gint velocity)
 {
   switch(midi->encoding)
   {
-  case 0: // absolute
-    // FIXME: prevent jumps (with large stepsize; need to account for case where last_known
-    // hasn't arrived at controller yet before next update; so move should be with respect to previous value)
-    // FIXME: recognise relative moves and set midi->encoding accordingly. Could be 5 identical (down) moves.
-    if(velocity == 0) return -1e6; // try to reach min
-    if(velocity == 127) return +1e6; // try to reach max
-    int diff = velocity - midi->last_known[controller];
-    midi->last_known[controller] = velocity;
-    return diff;
-    break;
   case 127: // 2s Complement
     if(velocity < 65)
       return velocity;
@@ -167,8 +157,28 @@ gint calculate_move(midi_device *midi, gint controller, gint velocity)
     else
       return 64 - velocity;
     break;
-  default:
-    return 0;
+  default: // absolute
+    {
+      int diff = velocity - midi->last_known[controller];
+      midi->last_known[controller] = velocity;
+/*
+      if(diff == 0)
+      {
+        // detecting relative encoding?
+        if(++midi->num_identical == 5)
+        {
+          dt_print(DT_DEBUG_INPUT, "Controller: switching encoding %d\n", velocity);
+          midi->encoding = velocity;
+        }
+        return 0;
+      }
+      else
+        midi->num_identical = 0;
+*/
+      if(velocity == 0) return -1e6; // try to reach min in one step
+      if(velocity == 127) return +1e6; // try to reach max in one step
+      return diff;
+    }
     break;
   }
 }
@@ -214,9 +224,14 @@ void update_with_move(midi_device *midi, PmTimestamp timestamp, gint controller,
     int c = - new_position - 1;
     rotor_position = c > 11 ? c+107 : c*127./12.+1.25;
   }
+  else
+  {
+    if(midi->last_known[controller] == 0) return;
+  }
 
   midi->last_known[controller] = rotor_position;
   midi_write(midi, midi->channel, 0xB, controller, rotor_position);
+  dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, controller %d, position: %d\n", midi->channel, controller, rotor_position);
 }
 
 static gboolean poll_midi_devices(gpointer user_data)
