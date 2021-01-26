@@ -34,6 +34,8 @@ DT_MODULE(1)
 
 #include <portmidi.h>
 
+#define EVENT_BUFFER_SIZE 100
+
 const char *name(dt_lib_module_t *self)
 {
   return _("midi");
@@ -67,10 +69,11 @@ typedef struct midi_device
   PortMidiStream     *portmidi_in;
   PortMidiStream     *portmidi_out;
 
+  gint8               channel;
   gboolean            syncing;
   gint                encoding;
   gint8               last_known[128];
-  gint8               last_channel, last_type, last_data1, last_data2;
+  gint8               last_type, last_data1;
 } midi_device;
 
 const char *note_names[] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B", NULL };
@@ -136,7 +139,9 @@ gint calculate_move(midi_device *midi, gint controller, gint velocity)
     // FIXME: recognise relative moves and set midi->encoding accordingly. Could be 5 identical (down) moves.
     if(velocity == 0) return -1e6; // try to reach min
     if(velocity == 127) return +1e6; // try to reach max
-    return velocity - midi->last_known[controller];
+    int diff = velocity - midi->last_known[controller];
+    midi->last_known[controller] = velocity;
+    return diff;
     break;
   case 127: // 2s Complement
     if(velocity < 65)
@@ -211,7 +216,7 @@ void update_with_move(midi_device *midi, PmTimestamp timestamp, gint controller,
   }
 
   midi->last_known[controller] = rotor_position;
-  midi_write(midi, midi->last_channel, 0xB, controller, rotor_position);
+  midi_write(midi, midi->channel, 0xB, controller, rotor_position);
 }
 
 static gboolean poll_midi_devices(gpointer user_data)
@@ -221,47 +226,56 @@ static gboolean poll_midi_devices(gpointer user_data)
   {
     midi_device *midi = devices->data;
 
-    PmEvent event;
+    PmEvent event[EVENT_BUFFER_SIZE];
+    int num_events = Pm_Read(midi->portmidi_in, event, EVENT_BUFFER_SIZE);
 
-    while(Pm_Poll(midi->portmidi_in) > 0 )
+    for(int i = 0; i < num_events; i++)
     {
-      Pm_Read(midi->portmidi_in, &event, 1);
 
-      int eventStatus = Pm_MessageStatus(event.message);
-      int eventData1 = Pm_MessageData1(event.message);
-      int eventData2 = Pm_MessageData2(event.message);
+      int event_status = Pm_MessageStatus(event[i].message);
+      int event_data1 = Pm_MessageData1(event[i].message);
+      int event_data2 = Pm_MessageData2(event[i].message);
 
-      int eventType = eventStatus >> 4;
-      int eventChannel = eventStatus & 0x0F;
+      int event_type = event_status >> 4;
 
-      midi->last_channel = eventChannel;
-      midi->last_type = eventType;
-      midi->last_data1 = eventData1;
-      midi->last_data2 = eventData2;
-
-      if (eventType == 0x9 && // note on
-          eventData2 == 0)
+      if (event_type == 0x9 && // note on
+          event_data2 == 0) // without volume
       {
-        eventType = 0x8; // note off
+        event_type = 0x8; // note off
       }
 
-      switch (eventType)
+      midi->last_type = event_type;
+      midi->channel = event_status & 0x0F;
+      midi->last_data1 = event_data1;
+
+      switch (event_type)
       {
       case 0x9:  // note on
-        dt_print(DT_DEBUG_INPUT, "Note On: Channel %d, Data1 %d\n", eventChannel, eventData1);
+        dt_print(DT_DEBUG_INPUT, "Note On: Channel %d, Data1 %d\n", midi->channel, event_data1);
 
-        dt_shortcut_key_down(midi->id, event.timestamp, eventData1, 0);
+        dt_shortcut_key_down(midi->id, event[i].timestamp, event_data1, 0);
         break;
       case 0x8:  // note off
-        dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", eventChannel, eventData1);
+        dt_print(DT_DEBUG_INPUT, "Note Off: Channel %d, Data1 %d\n", midi->channel, event_data1);
 
-        dt_shortcut_key_up(midi->id, event.timestamp, eventData1, 0);
+        dt_shortcut_key_up(midi->id, event[i].timestamp, event_data1, 0);
         break;
       case 0xb:  // controllers, sustain
-        dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d, Data2 %d\n", eventChannel, eventData1, eventData2);
+        dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d\n", midi->channel, event_data1);
 
-        // FIXME read all with same controller, aggregate (or just take last if absolute, because updates won't have been sent to device) and only at end process
-        update_with_move(midi, event.timestamp, eventData1, calculate_move(midi, eventData1, eventData2));
+        int accum = 0;
+        for(int j = i; j < num_events; j++)
+          if(Pm_MessageStatus(event[j].message) == event_status &&
+             Pm_MessageData1(event[j].message) == event_data1)
+          {
+            event_data2 = Pm_MessageData2(event[j].message);
+            dt_print(DT_DEBUG_INPUT, "Controller: Channel %d, Data1 %d, Data2 %d\n", midi->channel, event_data1, event_data2);
+
+            accum += calculate_move(midi, event_data1, event_data2);
+            event[j].message = 0; // don't process again later
+          }
+
+        update_with_move(midi, event[i].timestamp, event_data1, accum);
 
         break;
       default:
@@ -294,7 +308,7 @@ void midi_open_devices(dt_lib_module_t *self)
     if(info->input)
     {
       PortMidiStream *stream_in;
-      PmError error = Pm_OpenInput(&stream_in, i, NULL, 1000, NULL, NULL);
+      PmError error = Pm_OpenInput(&stream_in, i, NULL, EVENT_BUFFER_SIZE, NULL, NULL);
 
       if(error < 0)
       {

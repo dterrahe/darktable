@@ -502,6 +502,15 @@ static void define_new_mapping()
   g_free(file_name);
 }
 
+gboolean combobox_idle_value_changed(gpointer widget)
+{
+  g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+
+  while(g_idle_remove_by_data(widget));
+
+  return FALSE;
+}
+
 static float process_mapping(float move_size)
 {
   float return_value = NAN;
@@ -607,11 +616,13 @@ static float process_mapping(float move_size)
 
         if(move_size != 0)
         {
-          value = CLAMP(value + move_size, 0, dt_bauhaus_combobox_length(widget) - 1);
+          value = MAX(value + move_size, 0);
 
+          ++darktable.gui->reset;
           dt_bauhaus_combobox_set(widget, value);
+          --darktable.gui->reset;
 
-          g_signal_emit_by_name(G_OBJECT(widget), "value-changed");
+          g_idle_add(combobox_idle_value_changed, widget);
 
           dt_accel_widget_toast(widget);
         }
