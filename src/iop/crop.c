@@ -1224,15 +1224,16 @@ static gchar *_aspect_format(gchar *original,
 static void _crop_handle_flip(dt_iop_module_t *self, const dt_image_orientation_t mode)
 {
   dt_iop_crop_params_t *p = self ? self->params : NULL;
-  if(!p || (p->cx == 0.f && p->cy == 0.f && p->cw == 1.f && p->ch == 1.f))
-    return;
+  if(!p) return;
 
-  const float ocx = p->cx;
-  const float ocy = p->cy;
-  if(mode == ORIENTATION_FLIP_HORIZONTALLY)      {p->cx = 1.f-p->cw; p->cw = 1.f-ocx;}
-  else if(mode == ORIENTATION_FLIP_VERTICALLY)   {p->cy = 1.f-p->ch; p->ch = 1.f-ocy;}
-  else if(mode == ORIENTATION_ROTATE_CW_90_DEG)  {p->cx = 1.f-p->ch; p->ch = p->cw;     p->cw = 1.f-p->cy; p->cy = ocx;}
-  else if(mode == ORIENTATION_ROTATE_CCW_90_DEG) {p->cx = p->cy;     p->cy = 1.f-p->cw; p->cw = p->ch;     p->ch = 1.f-ocx;}
+  const float ocx = p->cx, ocy = p->cy, ocw = p->cw, och = p->ch;
+  if(mode == ORIENTATION_FLIP_HORIZONTALLY)      {p->cx = 1.f-ocw; p->cw = 1.f-ocx;}
+  else if(mode == ORIENTATION_FLIP_VERTICALLY)   {p->cy = 1.f-och; p->ch = 1.f-ocy;}
+  else if(mode == ORIENTATION_ROTATE_CW_90_DEG)  {p->cx = 1.f-och; p->ch =     ocw; p->cw = 1.f-ocy; p->cy =     ocx;}
+  else if(mode == ORIENTATION_ROTATE_CCW_90_DEG) {p->cx =     ocy; p->cy = 1.f-ocw; p->cw =     och; p->ch = 1.f-ocx;}
+
+  if(fabsf(p->cx - ocx) + fabsf(p->cy - ocy) + fabsf(p->cw - ocw) + fabsf(p->ch - och) < 0.0001f)
+    return;
 
   dt_iop_gui_update(self);
   dt_dev_add_history_item(darktable.develop, self, self->enabled);
