@@ -359,34 +359,10 @@ static GdkRGBA _lookup_color(GtkStyleContext *context, const char *name)
 
 void dt_control_draw_busy_msg(cairo_t *cr, int width, int height)
 {
-  PangoRectangle ink;
-  PangoLayout *layout;
-  PangoFontDescription *desc =
-    pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
-  const float fontsize = DT_PIXEL_APPLY_DPI(14);
-  pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
-  pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
-  layout = pango_cairo_create_layout(cr);
-  pango_layout_set_font_description(layout, desc);
-  pango_layout_set_text(layout, _("working..."), -1);
-  pango_layout_get_pixel_extents(layout, &ink, NULL);
-  if(ink.width > width * 0.98)
-  {
-    pango_layout_set_text(layout, "...", -1);
-    pango_layout_get_pixel_extents(layout, &ink, NULL);
-  }
-  const double xc = width / 2.0;
-  const double yc = height * 0.85 - DT_PIXEL_APPLY_DPI(30);
-  const double wd = ink.width * .5;
-  cairo_move_to(cr, xc - wd, yc + 1. / 3. * fontsize - fontsize);
-  pango_cairo_layout_path(cr, layout);
-  cairo_set_line_width(cr, 2.0);
-  dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_LOG_BG);
-  cairo_stroke_preserve(cr);
-  dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_LOG_FG);
-  cairo_fill(cr);
-  pango_font_description_free(desc);
-  g_object_unref(layout);
+  cairo_set_line_width(cr, DT_PIXEL_APPLY_DPI(10.0));
+  dt_draw_set_color_overlay(cr, TRUE, 1.0);
+  cairo_rectangle(cr, 0, 0, width, height);
+  cairo_stroke(cr);
 }
 
 void *dt_control_expose(void *voidptr)
