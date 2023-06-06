@@ -1642,6 +1642,8 @@ static void _init_widgets(dt_gui_gtk_t *gui)
                    G_CALLBACK(_focus_in_out_event), widget);
   g_signal_connect(G_OBJECT(widget), "focus-out-event",
                    G_CALLBACK(_focus_in_out_event), widget);
+  g_signal_connect(G_OBJECT(widget), "map", 
+                   G_CALLBACK(dt_gui_gtk_load_config), widget);
 
   container = widget;
 
