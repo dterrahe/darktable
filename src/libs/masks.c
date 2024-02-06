@@ -322,7 +322,9 @@ static void _lib_masks_inactivate_icons(dt_lib_module_t *self)
 
 static void _tree_add_shape(GtkButton *button, gpointer shape)
 {
-  dt_iop_module_t *module = NULL;
+  dt_iop_module_t *module = darktable.develop->gui_module;
+  if(module && !(module->flags() & IOP_FLAGS_SUPPORTS_BLENDING))
+    module = NULL;
 
   dt_lib_masks_t *lm = darktable.develop->proxy.masks.module->data;
   GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(lm->treeview));
