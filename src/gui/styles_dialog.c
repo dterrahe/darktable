@@ -959,18 +959,14 @@ GtkWidget *dt_gui_style_content_dialog(char *name, const dt_imgid_t imgid)
 
   GtkWidget *label = NULL;
 
-// Currently, some module names listed in the style tooltip are wider than the
-// style thumbnail, so the actual width of the tooltip can sometimes "breathe".
-// Given this, the width we specify here can also make the tooltip a little wider.
-#define STYLE_TOOLTIP_MAX_WIDTH 30
-
   // Style name
   char *localized_name = dt_util_localize_segmented_name(name);
   gchar *esc_name = g_markup_printf_escaped("<b>%s</b>", localized_name);
   free(localized_name);
   label = gtk_label_new(NULL);
   gtk_label_set_markup(GTK_LABEL(label), esc_name);
-  gtk_label_set_max_width_chars(GTK_LABEL(label), STYLE_TOOLTIP_MAX_WIDTH);
+  gtk_label_set_max_width_chars(GTK_LABEL(label), 0);
+  gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_box_pack_start(GTK_BOX(ht), label, FALSE, FALSE, 0);
   g_free(esc_name);
@@ -987,7 +983,8 @@ GtkWidget *dt_gui_style_content_dialog(char *name, const dt_imgid_t imgid)
     gchar *esc_des = g_markup_printf_escaped("<b>%s</b>", des);
     label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(label), esc_des);
-    gtk_label_set_max_width_chars(GTK_LABEL(label), STYLE_TOOLTIP_MAX_WIDTH);
+    gtk_label_set_max_width_chars(GTK_LABEL(label), 0);
+    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_box_pack_start(GTK_BOX(ht), label, FALSE, FALSE, 0);
     g_free(esc_des);
