@@ -3630,24 +3630,6 @@ static void _sort_reverse_changed(GtkDarktableToggleButton *widget, gpointer use
                              DT_COLLECTION_PROP_UNDEF, NULL);
 }
 
-GtkWidget *gui_tool_box(dt_lib_module_t *self)
-{
-  // specific header action
-  const gboolean sort_descend = dt_conf_get_bool("plugins/collect/descending");
-
-  GtkWidget *sortb = dtgtk_togglebutton_new(dtgtk_cairo_paint_sortby,
-                                            sort_descend
-                                            ? CPF_DIRECTION_DOWN
-                                            : CPF_DIRECTION_UP,
-                                            NULL);
-  gtk_widget_set_tooltip_text(sortb, _("toggle collection sort order ascending/descending"));
-  dt_gui_add_class(sortb, "dt_ignore_fg_state");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(sortb), sort_descend);
-  g_signal_connect(G_OBJECT(sortb),
-                   "toggled",
-                   G_CALLBACK(_sort_reverse_changed), self);
-  return sortb;
-}
 
 void gui_init(dt_lib_module_t *self)
 {
@@ -3735,13 +3717,26 @@ void gui_init(dt_lib_module_t *self)
   g_object_unref(treemodel);
 
   // the bottom buttons for the rules
+ 
+  const gboolean sort_descend = dt_conf_get_bool("plugins/collect/descending");
+  GtkWidget *sortb = dtgtk_togglebutton_new(dtgtk_cairo_paint_sortby,
+                                            sort_descend
+                                            ? CPF_DIRECTION_DOWN
+                                            : CPF_DIRECTION_UP,
+                                            NULL);
+  dt_gui_add_class(sortb, "dt_ignore_fg_state");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(sortb), sort_descend);
+  g_signal_connect(G_OBJECT(sortb),
+                   "toggled",
+                   G_CALLBACK(_sort_reverse_changed), self);
+
   GtkWidget *btn = dt_action_button_new(self,
                                         N_("history"),
                                         G_CALLBACK(_history_show), self,
                                         _("revert to a previous set of rules"),
                                         GDK_KEY_k, GDK_CONTROL_MASK);
   // dummy widget just to ensure alignment of history button with those in filtering lib
-  d->history_box = dt_gui_hbox(dt_gui_expand(gtk_drawing_area_new()), btn);
+  d->history_box = dt_gui_hbox(sortb, btn);
   gtk_box_set_homogeneous(GTK_BOX(d->history_box), TRUE);
   gtk_widget_show_all(d->history_box);
   gtk_widget_set_no_show_all(d->history_box, TRUE);
