@@ -3636,24 +3636,6 @@ static void _sort_reverse_changed(GtkDarktableToggleButton *widget, gpointer use
                              DT_COLLECTION_PROP_UNDEF, NULL);
 }
 
-GtkWidget *gui_tool_box(dt_lib_module_t *self)
-{
-  // specific header action
-  const gboolean sort_descend = dt_conf_get_bool("plugins/collect/descending");
-
-  GtkWidget *sortb = dtgtk_togglebutton_new(dtgtk_cairo_paint_sortby,
-                                            sort_descend
-                                            ? CPF_DIRECTION_DOWN
-                                            : CPF_DIRECTION_UP,
-                                            NULL);
-  dt_gui_add_class(sortb, "dt_ignore_fg_state");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(sortb), sort_descend);
-  g_signal_connect(G_OBJECT(sortb),
-                   "toggled",
-                   G_CALLBACK(_sort_reverse_changed), self);
-  return sortb;
-}
-
 void gui_init(dt_lib_module_t *self)
 {
   dt_lib_collect_t *d = (dt_lib_collect_t *)calloc(1, sizeof(dt_lib_collect_t));
@@ -3762,8 +3744,20 @@ void gui_init(dt_lib_module_t *self)
   d->history_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_set_homogeneous(GTK_BOX(d->history_box), TRUE);
   gtk_box_pack_start(GTK_BOX(self->widget), d->history_box, TRUE, TRUE, 0);
-  // dummy widget just to ensure alignment of history button  with those in filtering lib
-  gtk_box_pack_start(GTK_BOX(d->history_box), gtk_drawing_area_new(), TRUE, TRUE, 0);
+  
+  const gboolean sort_descend = dt_conf_get_bool("plugins/collect/descending");
+  GtkWidget *sortb = dtgtk_togglebutton_new(dtgtk_cairo_paint_sortby,
+                                            sort_descend
+                                            ? CPF_DIRECTION_DOWN
+                                            : CPF_DIRECTION_UP,
+                                            NULL);
+  dt_gui_add_class(sortb, "dt_ignore_fg_state");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(sortb), sort_descend);
+  g_signal_connect(G_OBJECT(sortb),
+                   "toggled",
+                   G_CALLBACK(_sort_reverse_changed), self);
+  gtk_box_pack_start(GTK_BOX(d->history_box), sortb, FALSE, FALSE, 0);
+
   GtkWidget *btn = dt_action_button_new(self,
                                         N_("history"),
                                         G_CALLBACK(_history_show), self,
