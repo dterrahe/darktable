@@ -2997,8 +2997,8 @@
   </dtconfig>
   <dtconfig>
     <name>plugins/darkroom/navigation/aspect_percent</name>
-    <type min="50" max="100">int</type>
-    <default>56</default>
+    <type min="50" max="150">int</type>
+    <default>66</default>
     <shortdescription>aspect ratio of the navigation module</shortdescription>
     <longdescription>aspect ratio of the navigation module in the darkroom</longdescription>
   </dtconfig>
