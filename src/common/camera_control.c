@@ -843,7 +843,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
   if(!camctl) return FALSE;
 
   dt_pthread_mutex_lock(&camctl->lock);
-  gboolean changed_camera = FALSE;
+  camctl->changed_camera = FALSE;
 
   /* reload portdrivers */
   if(camctl->gpports) gp_port_info_list_free(camctl->gpports);
@@ -898,7 +898,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
       dt_print(DT_DEBUG_CAMCTL,
                "[camera_control] found new %s on port %s",
                testcam->model, testcam->port);
-      changed_camera = TRUE;
+      camctl->changed_camera = TRUE;
     }
     g_free(testcam);
   }
@@ -929,7 +929,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
         camctl->unused_cameras = unused_item =
           g_list_delete_link(c->unused_cameras, unused_item);
         dt_camctl_unused_camera_destroy(oldcam);
-        changed_camera = TRUE;
+        camctl->changed_camera = TRUE;
       }
       else
       {
@@ -977,7 +977,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
           }
           // Add to camera list
           camctl->cameras = g_list_append(camctl->cameras, camera);
-          changed_camera = TRUE;
+          camctl->changed_camera = TRUE;
 
           dt_print(DT_DEBUG_CAMCTL,
                    "[camera_control] remove %s on port %s from"
@@ -1023,7 +1023,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
         dt_control_log(_("camera `%s' on port `%s' disconnected while mounted"),
                        cam->model, cam->port);
         dt_camctl_camera_destroy_struct(oldcam);
-        changed_camera = TRUE;
+        camctl->changed_camera = TRUE;
       }
       else if((cam->ptperror) || (cam->unmount))
       {
@@ -1040,21 +1040,21 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
         dt_camera_t *oldcam = (dt_camera_t *)citem->data;
         camctl->cameras = citem = g_list_delete_link(c->cameras, citem);
         dt_camctl_camera_destroy(oldcam);
-        changed_camera = TRUE;
+        camctl->changed_camera = TRUE;
       }
     } while(citem && (citem = g_list_next(citem)) != NULL);
   }
 
   gp_list_unref(available_cameras);
 
+  camctl->import_ui = TRUE;
   dt_pthread_mutex_unlock(&camctl->lock);
   // tell the world that we are done. this assumes that there is just
   // one global camctl.  if there would ever be more it would be easy
   // to pass c with the signal.
-  if(changed_camera)
-    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_CAMERA_DETECTED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_CAMERA_DETECTED);
 
-  return changed_camera;
+  return camctl->changed_camera;
 }
 
 void *dt_update_cameras_thread(void *ptr)
@@ -1074,7 +1074,6 @@ void *dt_update_cameras_thread(void *ptr)
     {
       if(camctl->import_ui == FALSE
          && dt_view_get_current() == DT_VIEW_LIGHTTABLE)
-//TODO:  && import module is expanded and visible
       {
         camctl->ticker += 1;
         if((camctl->ticker & camctl->tickmask) == 0)
