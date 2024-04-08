@@ -2465,11 +2465,9 @@ static gboolean _visible_shortcuts(GtkTreeModel *model,
   return FALSE;
 }
 
-static void _resize_shortcuts_view(GtkWidget *view,
-                                   GdkRectangle *allocation,
-                                   gpointer data)
+static void _resize_shortcuts_view(GtkWidget *view, GParamSpec *pspec, gpointer user_data)
 {
-  dt_conf_set_int("shortcuts/window_split", gtk_paned_get_position(GTK_PANED(data)));
+  dt_conf_set_int("shortcuts/window_split", gtk_paned_get_position(GTK_PANED(view)));
 }
 
 const dt_input_device_t DT_ALL_DEVICES = UINT8_MAX;
@@ -2988,7 +2986,7 @@ GtkWidget *dt_shortcuts_prefs(GtkWidget *widget)
 
   const int split_position = dt_conf_get_int("shortcuts/window_split");
   if(split_position) gtk_paned_set_position(GTK_PANED(container), split_position);
-  g_signal_connect(G_OBJECT(shortcuts_view), "size-allocate",
+  g_signal_connect(G_OBJECT(container), "notify::position",
                    G_CALLBACK(_resize_shortcuts_view), container);
 
   GtkWidget *button_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0), *button = NULL;
