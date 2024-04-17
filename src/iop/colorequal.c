@@ -2368,18 +2368,17 @@ void gui_changed(dt_iop_module_t *self, GtkWidget *w, void *previous)
      not sensitve and switch off visualizing mode.
   */
   const gboolean guiding = p->use_filter;
-  gtk_widget_set_sensitive(GTK_WIDGET(g->threshold), guiding);
-  gtk_widget_set_sensitive(GTK_WIDGET(g->contrast), guiding);
-  gtk_widget_set_sensitive(GTK_WIDGET(g->chroma_size), guiding);
-  gtk_widget_set_sensitive(GTK_WIDGET(g->param_size), guiding);
+  gtk_widget_set_visible(GTK_WIDGET(g->threshold), guiding);
+  gtk_widget_set_visible(GTK_WIDGET(g->contrast), guiding);
+  gtk_widget_set_visible(GTK_WIDGET(g->chroma_size), guiding);
+  gtk_widget_set_visible(GTK_WIDGET(g->param_size), guiding);
   if(w == g->use_filter && !guiding)
     g->mask_mode = 0;
 
-  ++darktable.gui->reset;
   if((work_profile != g->work_profile) || (w == g->hue_shift))
     _init_sliders(self);
+
   gtk_widget_queue_draw(GTK_WIDGET(g->area));
-  --darktable.gui->reset;
 }
 
 void gui_cleanup(struct dt_iop_module_t *self)
