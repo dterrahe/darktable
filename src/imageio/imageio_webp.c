@@ -87,9 +87,7 @@ dt_imageio_retval_t dt_imageio_open_webp(dt_image_t *img, const char *filename, 
   uint8_t intval;
   float floatval;
 
-#ifdef _OPENMP
-#pragma omp parallel for private(intval, floatval)
-#endif
+  DT_OMP_PRAGMA(parallel for private(intval, floatval))
   for(int i=0; i < w*h*4; i++)
   {
     intval = *(int_RGBA_buf+i);
