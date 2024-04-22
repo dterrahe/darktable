@@ -4363,9 +4363,7 @@ void gui_init(dt_iop_module_t *self)
   g->gui_hover = FALSE;
   g->gui_sizes_inited = FALSE;
 
-  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL,
-                                               0,
-                                               "plugins/darkroom/filmicrgb/graphheight"));
+  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL, 0, "plugins/darkroom/filmicrgb/aspect_percent"));
   g_object_set_data(G_OBJECT(g->area), "iop-instance", self);
   dt_action_define_iop(self, NULL, N_("graph"), GTK_WIDGET(g->area), NULL);
 
