@@ -30,20 +30,7 @@ static void dtgtk_drawing_area_get_preferred_height_for_width(GtkWidget *widget,
 {
   GtkDarktableDrawingArea *da = DTGTK_DRAWING_AREA(widget);
 
-  if(da->height == 0)
-  {
-    // initialize with height = width
-    *min_height = *nat_height = for_width;
-  }
-  else if(da->height == -1)
-  {
-    // initialize with aspect ratio
-    *min_height = *nat_height = for_width * da->aspect;
-  }
-  else
-  {
-    *min_height = *nat_height = da->height;
-  }
+  *min_height = *nat_height = for_width * da->aspect;
 }
 
 static void dtgtk_drawing_area_class_init(GtkDarktableDrawingAreaClass *class)
@@ -64,17 +51,6 @@ GtkWidget *dtgtk_drawing_area_new_with_aspect_ratio(double aspect)
   GtkDarktableDrawingArea *da;
   da = g_object_new(dtgtk_drawing_area_get_type(), NULL);
   da->aspect = aspect;
-  da->height = -1;
-
-  return (GtkWidget *)da;
-}
-
-GtkWidget *dtgtk_drawing_area_new_with_height(int height)
-{
-  GtkDarktableDrawingArea *da;
-  da = g_object_new(dtgtk_drawing_area_get_type(), NULL);
-  da->aspect = 1.0f; // not used
-  da->height = height;
 
   return (GtkWidget *)da;
 }
@@ -83,15 +59,6 @@ void dtgtk_drawing_area_set_aspect_ratio(GtkWidget *widget, double aspect)
 {
   GtkDarktableDrawingArea *da = DTGTK_DRAWING_AREA(widget);
   da->aspect = aspect;
-  da->height = -1;
-  gtk_widget_queue_resize(widget);
-}
-
-void dtgtk_drawing_area_set_height(GtkWidget *widget, int height)
-{
-  GtkDarktableDrawingArea *da = DTGTK_DRAWING_AREA(widget);
-  da->aspect = 1.0f; // not used
-  da->height = height;
   gtk_widget_queue_resize(widget);
 }
 

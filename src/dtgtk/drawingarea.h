@@ -40,15 +40,10 @@ struct _GtkDarktableDrawingArea
    *      2   => height is 2 times bigger than width
    */
   double aspect;
-  int height;
 };
 
-GType dtgtk_drawing_area_get_type(void);
-
 GtkWidget *dtgtk_drawing_area_new_with_aspect_ratio(double aspect);
-GtkWidget *dtgtk_drawing_area_new_with_height(int height);
 void dtgtk_drawing_area_set_aspect_ratio(GtkWidget *w, double aspect);
-void dtgtk_drawing_area_set_height(GtkWidget *w, int height);
 
 G_END_DECLS
 
@@ -57,3 +52,4 @@ G_END_DECLS
 // vim: shiftwidth=2 expandtab tabstop=2 cindent
 // kate: tab-indents: off; indent-width 2; replace-tabs on; indent-mode cstyle; remove-trailing-spaces modified;
 // clang-format on
+

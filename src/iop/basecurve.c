@@ -2141,7 +2141,7 @@ void gui_init(struct dt_iop_module_t *self)
 
   self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, DT_BAUHAUS_SPACE);
 
-  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_height(0));
+  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_aspect_ratio(1.0));
   gtk_widget_set_tooltip_text(GTK_WIDGET(g->area), _("abscissa: input, ordinate: output. works on RGB channels"));
   g_object_set_data(G_OBJECT(g->area), "iop-instance", self);
   dt_action_define_iop(self, NULL, N_("curve"), GTK_WIDGET(g->area), NULL);

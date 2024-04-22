@@ -1800,9 +1800,7 @@ void gui_init(struct dt_iop_module_t *self)
 
   // graph
   g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap
-                             (NULL, 
-                              0, 
-                              "plugins/darkroom/atrous/graphheight"));
+                             (NULL, 0, "plugins/darkroom/atrous/aspect_percent"));
   gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(g->area), TRUE, TRUE, 0);
 
   g_object_set_data(G_OBJECT(g->area), "iop-instance", self);
