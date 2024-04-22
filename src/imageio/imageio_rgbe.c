@@ -431,7 +431,7 @@ dt_imageio_retval_t dt_imageio_open_rgbe(dt_image_t *img, const char *filename, 
   // repair nan/inf etc
   const size_t npixels = (size_t)img->width * img->height;
 
-  DT_OMP_FOR(npixels, buf, rgbe_buf)
+  DT_OMP_FOR()
   for(size_t i = 0; i < npixels; i++)
   {
     dt_aligned_pixel_t pix = {0.0f, 0.0f, 0.0f, 0.0f};

@@ -354,8 +354,7 @@ void process(struct dt_iop_module_t *const self, dt_dev_pixelpipe_iop_t *const p
   const float *const restrict wb_high = __builtin_assume_aligned(d->wb_high, 16);
   const float *const restrict offset = __builtin_assume_aligned(d->offset, 16);
 
-  DT_OMP_FOR(d, in, out, roi_out, exposure, black, gamma, soft_clip, soft_clip_comp,
-             Dmin, wb_high, offset)
+  DT_OMP_FOR()
   for(size_t k = 0; k < (size_t)roi_out->height * roi_out->width * 4; k += 4)
   {
     const float *const restrict pix_in = in + k;
