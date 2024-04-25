@@ -2540,7 +2540,10 @@ static gboolean _iop_plugin_header_button_press(GtkWidget *w,
         !dt_conf_get_bool("darkroom/ui/single_module")
         != (!dt_modifier_is(e->state, GDK_SHIFT_MASK));
 
-      dt_iop_gui_set_expanded(module, !module->expanded, collapse_others);
+      if(module->expanded && module != darktable.develop->gui_module && !collapse_others)
+        dt_iop_request_focus(module);
+      else
+        dt_iop_gui_set_expanded(module, !module->expanded, collapse_others);
 
       // rebuild the accelerators
       dt_iop_connect_accels_multi(module->so);
