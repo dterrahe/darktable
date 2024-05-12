@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "common/atomic.h"
+#include "common/calculator.h"
 #include "common/debug.h"
 #include "common/history.h"
 #include "common/image_cache.h"
@@ -521,6 +522,158 @@ static inline void _dt_dev_load_raw(dt_develop_t *dev,
   dev->requested_id = dev->image_storage.id;
 }
 
+static void _apply_module_overrides(dt_develop_t *dev,
+                                    const dt_imgid_t imgid)
+{
+  gchar filename[PATH_MAX] = "";
+  dt_image_full_path(imgid, filename, sizeof(filename), NULL);
+  g_strlcat(filename, ".params", sizeof(filename));
+
+  FILE *f = g_fopen(filename, "rb");
+  if(f)
+  {
+    dt_print(DT_DEBUG_PARAMS, "applying parameter overrides from %s\n", filename);
+    char line[1024] = "";
+    while(fgets(line, sizeof(line), f))
+    {
+      if(*line == '#' || *line == ' ') continue;
+
+      line[strcspn(line, "\r\n")] = '\0';
+
+      char *comment = strstr(line, " [");
+      if(comment) *(comment) = '\0';
+
+      char *value = strchr(line, '=');
+      if(value) *(value++) = '\0';
+
+      char *field = strchr(line, '/');
+      if(field) *(field++) = '\0';
+
+      char *instance = strchr(line, ',');
+      if(instance) *(instance++) = '\0';
+
+      gboolean do_all = !g_ascii_strcasecmp(line, "all");
+      gboolean module_found = FALSE;
+      for(GList *hist = g_list_nth(dev->history, dev->history_end - 1);
+          hist && (do_all || !module_found);
+          hist = g_list_previous(hist))
+      {
+        dt_dev_history_item_t *history = hist->data;
+        dt_introspection_field_t *i, *intro = history->module->so->get_introspection_linear();
+
+        module_found = intro && !g_ascii_strcasecmp(history->module->op, line) &&
+                       (!instance || !g_ascii_strcasecmp(history->multi_name, instance));
+
+        if(!module_found && !do_all) continue;
+
+        gchar *man = NULL;
+        gboolean found = FALSE;
+        for(i = intro; !found && i->header.type != DT_INTROSPECTION_TYPE_NONE; i++)
+        {
+          found = field && (!g_ascii_strcasecmp(field, i->header.field_name) ||
+                            !g_ascii_strcasecmp(field, i->header.description));
+          if(found)
+          {
+            g_free(man);
+            man = NULL;
+          }
+
+          gchar *values = NULL;
+          gboolean assign = found && value && *value;
+          gpointer ptr = history->params + i->header.offset;
+          switch(i->header.type)
+          {
+          case DT_INTROSPECTION_TYPE_FLOAT:
+            if(i->Float.Min == -G_MAXFLOAT && i->Float.Max == G_MAXFLOAT)
+              values = g_strdup_printf("%f [-∞..∞]",
+                                       *(float*)ptr);
+            else
+              values = g_strdup_printf("%f [%f..%f]",
+                                       *(float*)ptr, i->Float.Min, i->Float.Max);
+            if(assign) *(float*)ptr = dt_calculator_solve(*(float*)ptr, value);
+            break;
+          case DT_INTROSPECTION_TYPE_INT:
+            values = g_strdup_printf("%d [%d..%d]",
+                                     *(int*)ptr, i->Int.Min, i->Int.Max);
+            if(assign) *(int*)ptr = dt_calculator_solve(*(int*)ptr, value);
+            break;
+          case DT_INTROSPECTION_TYPE_UINT:
+            values = g_strdup_printf("%u [%u..%u]",
+                                     *(unsigned int*)ptr, i->UInt.Min, i->UInt.Max);
+            if(assign) *(unsigned int*)ptr = dt_calculator_solve(*(unsigned int*)ptr, value);
+            break;
+          case DT_INTROSPECTION_TYPE_USHORT:
+            values = g_strdup_printf("%u [%u..%u]",
+                                     *(unsigned short*)ptr, i->UShort.Min, i->UShort.Max);
+            if(assign) *(unsigned short*)ptr = dt_calculator_solve(*(unsigned short*)ptr, value);
+            break;
+          case DT_INTROSPECTION_TYPE_INT8:
+            values = g_strdup_printf("%u [%u..%u]",
+                                     *(short*)ptr, i->Int8.Min, i->Int8.Max);
+            if(assign) *(short*)ptr = dt_calculator_solve(*(short*)ptr, value);
+            break;
+          case DT_INTROSPECTION_TYPE_ENUM:;
+            int old_value = *(int*)ptr;
+            gchar const *item = "";
+            gchar *list = g_strdup("");
+
+            for(dt_introspection_type_enum_tuple_t *e = i->Enum.values; e && e->name; e++)
+            {
+              if(old_value == e->value) item = e->name;
+              list = dt_util_dstrcat(list, "%s%s", *list ? ", " : "", e->name);
+              if(assign && (!g_ascii_strcasecmp(value, e->name) ||
+                            !g_ascii_strcasecmp(value, e->description)))
+                *(int*)ptr = e->value;
+            }
+            values = g_strdup_printf("%s [%s]",
+                                     item, list);
+            g_free(list);
+            break;
+          case DT_INTROSPECTION_TYPE_BOOL:
+            values = g_strdup_printf("%s [FALSE/TRUE]",
+                                     *(gboolean*)ptr ? "TRUE" : "FALSE");
+            if(assign) *(gboolean*)ptr = !g_ascii_strcasecmp(value, "TRUE") || *value == '1';
+            break;
+          default:
+            if(!found) continue;
+            dt_print(DT_DEBUG_ALWAYS,
+                    "[dt_iop_default_init] in `%s' unsupported introspection"
+                    " type \"%s\" encountered"
+                    " in field '%s'\n",
+                    history->module->op, i->header.type_name, i->header.field_name);
+            break;
+          }
+
+          if(values)
+          {
+            gboolean multi = instance || (do_all && *history->multi_name);
+            man = dt_util_dstrcat(man, "%s%s%s/%s=%s%s%s\n",
+                                       history->module->op,
+                                       multi ? "," : "", multi ? history->multi_name : "",
+                                       i->header.field_name,
+                                       values, assign ? " -> " : "", assign ? value : "");
+            g_free(values);
+          }
+        }
+
+        if(!found && !do_all && field)
+          dt_print_nts(DT_DEBUG_ALWAYS, "# invalid field '%s' for module '%s' in %s\n",
+                                        field, history->module->op, filename);
+
+        if(man && (found || !field))
+          dt_print_nts(DT_DEBUG_ALWAYS, "%s", man);
+
+        g_free(man);
+      }
+
+      if(!module_found && !do_all)
+        dt_print_nts(DT_DEBUG_ALWAYS, "# module '%s'%s%s in %s not found in history\n",
+                     line, instance ? " instance: " : "", instance ? instance : "", filename);
+    }
+    fclose(f);
+  }
+}
+
 void dt_dev_reload_image(dt_develop_t *dev,
                          const dt_imgid_t imgid)
 {
@@ -610,6 +763,8 @@ void dt_dev_load_image(dt_develop_t *dev,
 
   dt_dev_read_history_ext(dev, dev->image_storage.id, FALSE);
   dt_pthread_mutex_unlock(&darktable.dev_threadsafe);
+
+  _apply_module_overrides(dev, imgid);
 
   dev->first_load = FALSE;
 
