@@ -242,40 +242,38 @@ void dt_iop_default_init(dt_iop_module_t *module)
 
   while(i->header.type != DT_INTROSPECTION_TYPE_NONE)
   {
+    gpointer ptr = module->default_params + i->header.offset;
     switch(i->header.type)
     {
     case DT_INTROSPECTION_TYPE_FLOATCOMPLEX:
-      *(float complex*)((uint8_t *)module->default_params + i->header.offset) =
-        i->FloatComplex.Default;
+      *(float complex*)ptr = i->FloatComplex.Default;
       break;
     case DT_INTROSPECTION_TYPE_FLOAT:
-      *(float*)((uint8_t *)module->default_params + i->header.offset) = i->Float.Default;
+      *(float*)ptr = i->Float.Default;
       break;
     case DT_INTROSPECTION_TYPE_INT:
-      *(int*)((uint8_t *)module->default_params + i->header.offset) = i->Int.Default;
+      *(int*)ptr = i->Int.Default;
       break;
     case DT_INTROSPECTION_TYPE_UINT:
-      *(unsigned int*)((uint8_t *)module->default_params + i->header.offset) =
-        i->UInt.Default;
+      *(unsigned int*)ptr = i->UInt.Default;
       break;
     case DT_INTROSPECTION_TYPE_USHORT:
-      *(unsigned short*)((uint8_t *)module->default_params + i->header.offset) =
-        i->UShort.Default;
+      *(unsigned short*)ptr = i->UShort.Default;
       break;
     case DT_INTROSPECTION_TYPE_INT8:
-      *(short*)((uint8_t *)module->default_params + i->header.offset) = i->Int8.Default;
+      *(short*)ptr = i->Int8.Default;
       break;
     case DT_INTROSPECTION_TYPE_ENUM:
-      *(int*)((uint8_t *)module->default_params + i->header.offset) = i->Enum.Default;
+      *(int*)ptr = i->Enum.Default;
       break;
     case DT_INTROSPECTION_TYPE_BOOL:
-      *(gboolean*)((uint8_t *)module->default_params + i->header.offset) = i->Bool.Default;
+      *(gboolean*)ptr = i->Bool.Default;
       break;
     case DT_INTROSPECTION_TYPE_CHAR:
-      *(char*)((uint8_t *)module->default_params + i->header.offset) = i->Char.Default;
+      *(char*)ptr = i->Char.Default;
       break;
     case DT_INTROSPECTION_TYPE_OPAQUE:
-      memset((uint8_t *)module->default_params + i->header.offset, 0, i->header.size);
+      memset(ptr, 0, i->header.size);
       break;
     case DT_INTROSPECTION_TYPE_ARRAY:
       {
@@ -284,7 +282,7 @@ void dt_iop_default_init(dt_iop_module_t *module)
         size_t element_size = i->Array.field->header.size;
         if(element_size % sizeof(int))
         {
-          int8_t *p = (int8_t *)module->default_params + i->header.offset;
+          int8_t *p = ptr;
           for(size_t c = element_size; c < i->header.size; c++, p++)
             p[element_size] = *p;
         }
@@ -293,7 +291,7 @@ void dt_iop_default_init(dt_iop_module_t *module)
           element_size /= sizeof(int);
           const size_t num_ints = i->header.size / sizeof(int);
 
-          int *p = (int *)((uint8_t *)module->default_params + i->header.offset);
+          int *p = ptr;
           for(size_t c = element_size; c < num_ints; c++, p++)
             p[element_size] = *p;
         }
