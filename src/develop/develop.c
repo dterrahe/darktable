@@ -620,7 +620,7 @@ static void _apply_module_overrides(dt_develop_t *dev,
             for(dt_introspection_type_enum_tuple_t *e = i->Enum.values; e && e->name; e++)
             {
               if(old_value == e->value) item = e->name;
-              list = dt_util_dstrcat(list, "%s%s", *list ? ", " : "", e->name);
+              dt_util_str_cat(&list, "%s%s", *list ? ", " : "", e->name);
               if(assign && (!g_ascii_strcasecmp(value, e->name) ||
                             !g_ascii_strcasecmp(value, e->description)))
                 *(int*)ptr = e->value;
@@ -637,21 +637,21 @@ static void _apply_module_overrides(dt_develop_t *dev,
           default:
             if(!found) continue;
             dt_print(DT_DEBUG_ALWAYS,
-                    "[dt_iop_default_init] in `%s' unsupported introspection"
-                    " type \"%s\" encountered"
-                    " in field '%s'\n",
-                    history->module->op, i->header.type_name, i->header.field_name);
+                     "[dt_iop_default_init] in `%s' unsupported introspection"
+                     " type \"%s\" encountered"
+                     " in field '%s'\n",
+                     history->module->op, i->header.type_name, i->header.field_name);
             break;
           }
 
           if(values)
           {
             gboolean multi = instance || (do_all && *history->multi_name);
-            man = dt_util_dstrcat(man, "%s%s%s/%s=%s%s%s\n",
-                                       history->module->op,
-                                       multi ? "," : "", multi ? history->multi_name : "",
-                                       i->header.field_name,
-                                       values, assign ? " -> " : "", assign ? value : "");
+            dt_util_str_cat(&man, "%s%s%s/%s=%s%s%s\n",
+                                  history->module->op,
+                                  multi ? "," : "", multi ? history->multi_name : "",
+                                  i->header.field_name,
+                                  values, assign ? " -> " : "", assign ? value : "");
             g_free(values);
           }
         }
