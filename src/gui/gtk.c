@@ -2214,7 +2214,8 @@ void dt_ui_panel_set_size(dt_ui_t *ui,
     if(p == DT_UI_PANEL_BOTTOM)
       gtk_widget_set_size_request(ui->panels[p], -1, s);
     else
-      gtk_widget_set_size_request(ui->panels[p], s, -1);
+      gtk_widget_set_size_request(ui->panels[p], CLAMP(s, 0, 
+        gtk_widget_get_allocated_width(ui->main_window)/3), -1);
     key = _panels_get_panel_path(p, "_size");
     dt_conf_set_int(key, s);
     g_free(key);
