@@ -1213,8 +1213,7 @@ static int32_t _image_get_possible_version(const dt_imgid_t imgid,
   char imgpath[PATH_MAX] = { 0 };
   char versionpath[PATH_MAX] = { 0 };
 
-  gboolean from_cache = FALSE;
-  dt_image_full_path(imgid, imgpath, sizeof(imgpath), &from_cache);
+  dt_image_full_path(imgid, imgpath, sizeof(imgpath), NULL);
 
   for(int32_t version = MAX(1, max_version); version < 1000; version++)
   {
@@ -2182,8 +2181,7 @@ int32_t dt_image_rename(const dt_imgid_t imgid, const int32_t filmid, const gcha
   int32_t result = -1;
   gchar oldimg[PATH_MAX] = { 0 };
   gchar newimg[PATH_MAX] = { 0 };
-  gboolean from_cache = FALSE;
-  dt_image_full_path(imgid, oldimg, sizeof(oldimg), &from_cache);
+  dt_image_full_path(imgid, oldimg, sizeof(oldimg), NULL);
   gchar *newdir = NULL;
 
   sqlite3_stmt *film_stmt;
@@ -2387,7 +2385,6 @@ dt_imgid_t dt_image_copy_rename(const dt_imgid_t imgid,
   gchar srcpath[PATH_MAX] = { 0 };
   gchar *newdir = NULL;
   gchar *filename = NULL;
-  gboolean from_cache = FALSE;
   gchar *oldFilename = NULL;
   gchar *newFilename = NULL;
 
@@ -2404,7 +2401,7 @@ dt_imgid_t dt_image_copy_rename(const dt_imgid_t imgid,
   GFile *src = NULL, *dest = NULL;
   if(newdir)
   {
-    dt_image_full_path(imgid, srcpath, sizeof(srcpath), &from_cache);
+    dt_image_full_path(imgid, srcpath, sizeof(srcpath), NULL);
     oldFilename = g_path_get_basename(srcpath);
     gchar *destpath;
     if(newname)
@@ -2684,8 +2681,7 @@ gboolean dt_image_local_copy_set(const dt_imgid_t imgid)
   gchar srcpath[PATH_MAX] = { 0 };
   gchar destpath[PATH_MAX] = { 0 };
 
-  gboolean from_cache = FALSE;
-  dt_image_full_path(imgid, srcpath, sizeof(srcpath), &from_cache);
+  dt_image_full_path(imgid, srcpath, sizeof(srcpath), NULL);
 
   _image_local_copy_full_path(imgid, destpath, sizeof(destpath));
 
@@ -2945,9 +2941,8 @@ void dt_image_local_copy_synch(void)
   while(sqlite3_step(stmt) == SQLITE_ROW)
   {
     const dt_imgid_t imgid = sqlite3_column_int(stmt, 0);
-    gboolean from_cache = FALSE;
     char filename[PATH_MAX] = { 0 };
-    dt_image_full_path(imgid, filename, sizeof(filename), &from_cache);
+    dt_image_full_path(imgid, filename, sizeof(filename), NULL);
 
     if(g_file_test(filename, G_FILE_TEST_EXISTS))
     {
@@ -3101,9 +3096,8 @@ char *dt_image_get_audio_path_from_path(const char *image_path)
 
 char *dt_image_get_audio_path(const dt_imgid_t imgid)
 {
-  gboolean from_cache = FALSE;
   char image_path[PATH_MAX] = { 0 };
-  dt_image_full_path(imgid, image_path, sizeof(image_path), &from_cache);
+  dt_image_full_path(imgid, image_path, sizeof(image_path), NULL);
 
   return dt_image_get_audio_path_from_path(image_path);
 }
@@ -3133,9 +3127,8 @@ char *dt_image_get_text_path_from_path(const char *image_path)
 
 char *dt_image_get_text_path(const dt_imgid_t imgid)
 {
-  gboolean from_cache = FALSE;
   char image_path[PATH_MAX] = { 0 };
-  dt_image_full_path(imgid, image_path, sizeof(image_path), &from_cache);
+  dt_image_full_path(imgid, image_path, sizeof(image_path), NULL);
 
   return dt_image_get_text_path_from_path(image_path);
 }
