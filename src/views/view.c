@@ -1775,20 +1775,14 @@ void dt_view_paint_surface(cairo_t *cr,
 
   cairo_save(cr);
 
-  if(port->color_assessment)
+  if(window != DT_WINDOW_DIFFERENCE)
   {
-    // force middle grey in background
-    dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_COLOR_ASSESSMENT_BG);
-  }
-  else
-  {
-    if(dev->full_preview)
-      dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_DARKROOM_PREVIEW_BG);
-    else
-      dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_DARKROOM_BG);
-  }
+    dt_gui_gtk_set_source_rgb(cr, port->color_assessment ? DT_GUI_COLOR_COLOR_ASSESSMENT_BG :
+                                  dev->full_preview      ? DT_GUI_COLOR_DARKROOM_PREVIEW_BG :
+                                                           DT_GUI_COLOR_DARKROOM_BG);
 
-  cairo_paint(cr);
+    cairo_paint(cr);
+  }
 
   cairo_translate(cr, 0.5 * width, 0.5 * height);
   dt_pthread_mutex_lock(&pp->backbuf_mutex);
@@ -1797,6 +1791,7 @@ void dt_view_paint_surface(cairo_t *cr,
   const int maxh = MIN(port->height, backbuf_scale * processed_height * (1<<closeup) / ppd);
 
   if(port->color_assessment
+     && window != DT_WINDOW_DIFFERENCE
      && window != DT_WINDOW_SLIDESHOW)
   {
     // draw the white frame around picture
@@ -1815,6 +1810,7 @@ void dt_view_paint_surface(cairo_t *cr,
   const double trans_y = (offset_y - zoom_y) * processed_height * buf_scale - 0.5 * buf_height;
 
   if(pp->output_imgid == dev->image_storage.id
+     && window != DT_WINDOW_DIFFERENCE
      && (port->pipe->output_imgid != dev->image_storage.id
          || fabsf(backbuf_scale / buf_scale - 1.0f) > .09f
          || floor(maxw / 2 / back_scale) - 1 > MIN(- trans_x, trans_x + buf_width)
@@ -1872,6 +1868,7 @@ void dt_view_paint_surface(cairo_t *cr,
     cairo_surface_t *surface = dt_view_create_surface(buf, buf_width, buf_height);
     cairo_set_source_surface(cr, surface, 0, 0);
     cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_FAST);
+    if(window == DT_WINDOW_DIFFERENCE) cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
     cairo_paint(cr);
 
     if(darktable.gui->show_focus_peaking
