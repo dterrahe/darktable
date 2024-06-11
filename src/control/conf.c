@@ -55,18 +55,13 @@ static inline char *_conf_get_var(const char *name)
 
   // not found, try defaults
   str = (char *)dt_confgen_get(name, DT_DEFAULT);
-  if(str)
+  if(str && *str)
   {
     char *str_new = g_strdup(str);
     g_hash_table_insert(darktable.conf->table, g_strdup(name), str_new);
     str = str_new;
     goto fin;
   }
-
-  // FIXME: why insert garbage?
-  // still no luck? insert garbage:
-  str = (char *)g_malloc0(sizeof(int32_t));
-  g_hash_table_insert(darktable.conf->table, g_strdup(name), str);
 
 fin:
   dt_pthread_mutex_unlock(&darktable.conf->mutex);
@@ -158,7 +153,7 @@ static int _conf_get_int_fast(const char *name)
   {
     //we've got garbage, check default
     const char *def_val = dt_confgen_get(name, DT_DEFAULT);
-    if(def_val)
+    if(def_val && *def_val)
     {
       new_value = dt_calculator_solve(1, def_val);
       if(_conf_isnan(new_value))
@@ -201,7 +196,7 @@ static int64_t _conf_get_int64_fast(const char *name)
   {
     //we've got garbage, check default
     const char *def_val = dt_confgen_get(name, DT_DEFAULT);
-    if(def_val)
+    if(def_val && *def_val)
     {
       new_value = dt_calculator_solve(1, def_val);
       if(_conf_isnan(new_value))
@@ -244,7 +239,7 @@ float _conf_get_float_fast(const char *name)
   {
     //we've got garbage, check default
     const char *def_val = dt_confgen_get(name, DT_DEFAULT);
-    if(def_val)
+    if(def_val && *def_val)
     {
       new_value = dt_calculator_solve(1, def_val);
       if(_conf_isnan(new_value))
