@@ -2970,7 +2970,7 @@ char *dt_gui_get_help_url(GtkWidget *widget)
     widget = gtk_widget_get_parent(widget);
   }
 
-  return NULL;
+  return "/";
 }
 
 void dt_gui_dialog_add_help(GtkDialog *dialog,
