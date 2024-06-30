@@ -3312,9 +3312,9 @@ static void view_set_click(gpointer instance,
 
 static void _populate_collect_combo(GtkWidget *w)
 {
-#define ADD_COLLECT_ENTRY(value)                                                              \
-  dt_bauhaus_combobox_add_full(w, dt_collection_name(value), \
-                               DT_BAUHAUS_COMBOBOX_ALIGN_RIGHT,         \
+#define ADD_COLLECT_ENTRY(value)                               \
+  dt_bauhaus_combobox_add_full(w, dt_collection_name(value),   \
+                               DT_BAUHAUS_COMBOBOX_ALIGN_LEFT, \
                                GUINT_TO_POINTER(value + 1), NULL, TRUE)
 
     dt_bauhaus_combobox_add_section(w, _("files"));
@@ -3335,7 +3335,7 @@ static void _populate_collect_combo(GtkWidget *w)
       if(!metadata->internal && metadata->visible)
         // metadata name is user defined, so no localization here
         dt_bauhaus_combobox_add_full(w, metadata->name,
-                                     DT_BAUHAUS_COMBOBOX_ALIGN_RIGHT,
+                                     DT_BAUHAUS_COMBOBOX_ALIGN_LEFT,
                                      GUINT_TO_POINTER(DT_COLLECTION_PROP_METADATA_OFFSET + metadata->key + 1),
                                      NULL, TRUE);
     }
