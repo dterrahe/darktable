@@ -2799,14 +2799,15 @@ static void _popup_show(GtkWidget *widget)
   }
   else
   {
-    p->x = right_of_w - p->width;
+    if(w->type == DT_BAUHAUS_SLIDER || w->data.combobox.text_align == DT_BAUHAUS_COMBOBOX_ALIGN_RIGHT)
+      p->x = right_of_w - p->width;
     if(py < p->y || py > p->y + p->height)
     {
       p->y = py - bh->line_height / 2;
     }
   }
 
-  switch(bh->current->type)
+  switch(w->type)
   {
     case DT_BAUHAUS_SLIDER:
     {
