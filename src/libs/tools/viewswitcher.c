@@ -80,6 +80,8 @@ int position(const dt_lib_module_t *self)
   return 1001;
 }
 
+#define SHORTCUT_TOOLTIP(v, w) dt_action_define(&darktable.control->actions_global, "switch views", v->module_name, w, NULL);
+
 static void _dropdown_changed(GtkComboBox *widget, gpointer user_data)
 {
   dt_lib_viewswitcher_t *d = (dt_lib_viewswitcher_t *)user_data;
@@ -91,6 +93,7 @@ static void _dropdown_changed(GtkComboBox *widget, gpointer user_data)
     GtkTreeModel *model = gtk_combo_box_get_model(GTK_COMBO_BOX(d->dropdown));
     gtk_tree_model_get(model, &iter, VIEW_COLUMN, &view, -1);
     _switch_view(view);
+    SHORTCUT_TOOLTIP(view, d->dropdown);
   }
 }
 
@@ -120,7 +123,7 @@ void gui_init(dt_lib_module_t *self)
       gtk_box_pack_start(GTK_BOX(self->widget), w, FALSE, FALSE, 0);
       d->labels = g_list_append(d->labels, gtk_bin_get_child(GTK_BIN(w)));
 
-      dt_action_define(&darktable.control->actions_global, "switch views", view->module_name, w, NULL);
+      SHORTCUT_TOOLTIP(view, w);
 
       /* create space if more views */
       if(view_iter->next != NULL)
@@ -191,6 +194,7 @@ static void _lib_viewswitcher_view_cannot_change_callback(gpointer instance, dt_
   g_signal_handlers_block_by_func(d->dropdown, _dropdown_changed, d);
   gtk_combo_box_set_active(GTK_COMBO_BOX(d->dropdown), 0);
   gtk_widget_set_state_flags(d->dropdown, GTK_STATE_FLAG_SELECTED, FALSE);
+  g_hash_table_remove(darktable.control->widgets, d->dropdown);
   g_signal_handlers_unblock_by_func(d->dropdown, _dropdown_changed, d);
 }
 
@@ -220,6 +224,7 @@ static void _lib_viewswitcher_view_changed_callback(gpointer instance, dt_view_t
   {
     gtk_combo_box_set_active(GTK_COMBO_BOX(d->dropdown), 0);
     gtk_widget_set_state_flags(d->dropdown, GTK_STATE_FLAG_NORMAL, TRUE);
+    g_hash_table_remove(darktable.control->widgets, d->dropdown);
   }
   else
   {
@@ -234,6 +239,7 @@ static void _lib_viewswitcher_view_changed_callback(gpointer instance, dt_view_t
       {
         gtk_combo_box_set_active(GTK_COMBO_BOX(d->dropdown), index);
         gtk_widget_set_state_flags(d->dropdown, GTK_STATE_FLAG_SELECTED, TRUE);
+        SHORTCUT_TOOLTIP(new_view, d->dropdown);
         break;
       }
       g_free(str);
