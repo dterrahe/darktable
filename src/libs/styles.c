@@ -159,10 +159,9 @@ gboolean _styles_tooltip_callback(GtkWidget* self,
     }
 
     GtkWidget *ht = dt_gui_style_content_dialog(name, imgid);
-    gtk_widget_show_all(ht);
+    dt_action_define(&darktable.control->actions_global, "styles", name, self, NULL);
 
-    gtk_tooltip_set_custom(tooltip, ht);
-    return TRUE;
+    return dt_shortcut_tooltip_callback(self, x, y, keyboard_mode, tooltip, ht);
   }
 
   return FALSE;
