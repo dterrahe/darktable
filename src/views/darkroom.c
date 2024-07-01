@@ -1298,8 +1298,6 @@ gboolean _styles_tooltip_callback(GtkWidget* self,
 
   GtkWidget *ht = dt_gui_style_content_dialog(name, imgid);
 
-  g_object_set_data_full(G_OBJECT(self), "dt-preset-name", g_strdup(name), g_free);
-
   return dt_shortcut_tooltip_callback(self, x, y, keyboard_mode, tooltip, ht);
 }
 
@@ -1344,6 +1342,7 @@ static void _darkroom_ui_apply_style_popupmenu(GtkWidget *w, gpointer user_data)
       g_signal_connect_data(mi, "query-tooltip",
                             G_CALLBACK(_styles_tooltip_callback),
                             g_strdup(style->name), (GClosureNotify)g_free, 0);
+      dt_action_define(&darktable.control->actions_global, "styles", style->name, mi, NULL);
 
       g_free(mi_name);
 
