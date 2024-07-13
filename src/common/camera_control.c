@@ -1052,7 +1052,7 @@ static gboolean dt_camctl_update_cameras(const dt_camctl_t *c)
   // tell the world that we are done. this assumes that there is just
   // one global camctl.  if there would ever be more it would be easy
   // to pass c with the signal.
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_CAMERA_DETECTED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_CAMERA_DETECTED);
 
   return camctl->changed_camera;
 }
