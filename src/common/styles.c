@@ -460,7 +460,7 @@ void dt_styles_update(const char *name,
 
   dt_gui_style_content_dialog("", -1);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_STYLE_CHANGED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_STYLE_CHANGED);
 
   g_free(desc);
 }
@@ -546,7 +546,7 @@ void dt_styles_create_from_style(const char *name,
     dt_styles_save_to_file(newname, NULL, FALSE);
 
     dt_control_log(_("style named '%s' successfully created"), newname);
-    DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_STYLE_CHANGED);
+    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_STYLE_CHANGED);
   }
 }
 
@@ -631,7 +631,7 @@ gboolean dt_styles_create_from_image(const char *name,
     /* backup style to disk */
     dt_styles_save_to_file(name, NULL, FALSE);
 
-    DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_STYLE_CHANGED);
+    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_STYLE_CHANGED);
     return TRUE;
   }
   return FALSE;
@@ -684,7 +684,7 @@ void dt_styles_apply_to_list(const char *name, const GList *list, gboolean dupli
   dt_undo_end_group(darktable.undo);
   dt_pthread_mutex_unlock(&darktable.undo->mutex);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_TAG_CHANGED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_TAG_CHANGED);
 
   if(!selected)
   {
@@ -742,7 +742,7 @@ void dt_multiple_styles_apply_to_list(GList *styles,
   }
   dt_undo_end_group(darktable.undo);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_TAG_CHANGED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_TAG_CHANGED);
 
   const guint styles_cnt = g_list_length(styles);
   dt_control_log(ngettext("style successfully applied!",
@@ -1093,8 +1093,7 @@ void _styles_apply_to_image_ext(const char *name,
       dt_image_reset_aspect_ratio(newimgid, TRUE);
 
     /* redraw center view to update visible mipmaps */
-    DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals,
-                                  DT_SIGNAL_DEVELOP_MIPMAP_UPDATED, newimgid);
+    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_DEVELOP_MIPMAP_UPDATED, newimgid);
   }
 }
 
@@ -1120,7 +1119,7 @@ void dt_styles_apply_to_dev(const char *name, const dt_imgid_t imgid)
   _styles_apply_to_image_ext(name, FALSE, FALSE, imgid, FALSE);
   dt_dev_reload_image(darktable.develop, imgid);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_TAG_CHANGED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_TAG_CHANGED);
 
   /* record current history state : after change (needed for undo) */
   dt_dev_undo_end_record(darktable.develop);
@@ -1158,7 +1157,7 @@ void dt_styles_delete_by_name_adv(const char *name, const gboolean raise)
     dt_action_rename(old, NULL);
 
     if(raise)
-      DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_STYLE_CHANGED);
+      DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_STYLE_CHANGED);
   }
 }
 
@@ -1741,7 +1740,7 @@ void dt_styles_import_from_file(const char *style_path)
   dt_styles_style_data_free(style, TRUE);
   fclose(style_file);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_STYLE_CHANGED);
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_STYLE_CHANGED);
 }
 
 gchar *dt_styles_get_description(const char *name)

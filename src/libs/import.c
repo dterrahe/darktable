@@ -2396,9 +2396,7 @@ void gui_init(dt_lib_module_t *self)
   d->devices = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
   gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(d->devices), FALSE, FALSE, 0);
 
-  DT_DEBUG_CONTROL_SIGNAL_CONNECT(darktable.signals,
-                                  DT_SIGNAL_CAMERA_DETECTED, G_CALLBACK(_camera_detected),
-                                  self);
+  DT_CONTROL_SIGNAL_CONNECT(DT_SIGNAL_CAMERA_DETECTED, _camera_detected, self);
   dt_action_define(DT_ACTION(self), NULL, _import_text[DT_IMPORT_CAMERA], NULL, &dt_action_def_button);
   dt_action_define(DT_ACTION(self), NULL, _import_text[DT_IMPORT_TETHER], NULL, &dt_action_def_button);
   dt_action_define(DT_ACTION(self), NULL, N_("mount camera"), NULL, &dt_action_def_button);
@@ -2441,8 +2439,7 @@ void gui_cleanup(dt_lib_module_t *self)
 {
   dt_lib_import_t *d = (dt_lib_import_t *)self->data;
 #ifdef HAVE_GPHOTO2
-  DT_DEBUG_CONTROL_SIGNAL_DISCONNECT(darktable.signals,
-                                     G_CALLBACK(_camera_detected), self);
+  DT_CONTROL_SIGNAL_DISCONNECT(_camera_detected, self);
 #endif
 #ifdef USE_LUA
   detach_lua_widgets(d->extra_lua_widgets);

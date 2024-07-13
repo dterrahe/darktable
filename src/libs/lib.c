@@ -165,8 +165,8 @@ static void menuitem_update_preset(GtkMenuItem *menuitem,
     DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 4, name, -1, SQLITE_TRANSIENT);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_PRESETS_CHANGED,
-                                  g_strdup(minfo->plugin_name));
+    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_PRESETS_CHANGED,
+                            g_strdup(minfo->plugin_name));
   }
 }
 
@@ -231,8 +231,8 @@ static void menuitem_delete_preset(GtkMenuItem *menuitem,
 
     dt_lib_presets_remove(name, minfo->plugin_name, minfo->version);
 
-    DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_PRESETS_CHANGED,
-                                  g_strdup(minfo->plugin_name));
+    DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_PRESETS_CHANGED,
+                            g_strdup(minfo->plugin_name));
   }
   g_free(name);
 }
@@ -807,8 +807,8 @@ void dt_lib_init_presets(dt_lib_module_t *module)
   if(module->init_presets)
     module->init_presets(module);
 
-  DT_DEBUG_CONTROL_SIGNAL_RAISE(darktable.signals, DT_SIGNAL_PRESETS_CHANGED,
-                                g_strdup(module->plugin_name));
+  DT_CONTROL_SIGNAL_RAISE(DT_SIGNAL_PRESETS_CHANGED,
+                          g_strdup(module->plugin_name));
 
   sqlite3_stmt *stmt;
   // clang-format off
@@ -1343,15 +1343,12 @@ void dt_lib_init(dt_lib_t *lib)
                                                   dt_lib_load_module,
                                                   dt_lib_init_module,
                                                   dt_lib_sort_plugins);
-  DT_DEBUG_CONTROL_SIGNAL_CONNECT(darktable.signals,
-                                  DT_SIGNAL_PREFERENCES_CHANGE,
-                                  G_CALLBACK(_preferences_changed), lib);
+  DT_CONTROL_SIGNAL_CONNECT(DT_SIGNAL_PREFERENCES_CHANGE, _preferences_changed, lib);
 }
 
 void dt_lib_cleanup(dt_lib_t *lib)
 {
-  DT_DEBUG_CONTROL_SIGNAL_DISCONNECT(darktable.signals,
-                                     G_CALLBACK(_preferences_changed), lib);
+  DT_CONTROL_SIGNAL_DISCONNECT(_preferences_changed, lib);
   while(lib->plugins)
   {
     dt_lib_module_t *module = (dt_lib_module_t *)(lib->plugins->data);
