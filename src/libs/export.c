@@ -1092,9 +1092,8 @@ static void _on_storage_list_changed(gpointer instance,
 }
 
 static void _lib_export_styles_changed_callback(gpointer instance,
-                                                gpointer user_data)
+                                                dt_lib_module_t *self)
 {
-  dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_export_t *d = self->data;
 
   dt_bauhaus_combobox_clear(d->style);

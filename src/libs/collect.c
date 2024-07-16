@@ -3293,9 +3293,8 @@ static gboolean popup_button_callback(GtkWidget *widget,
 }
 
 static void view_set_click(gpointer instance,
-                           gpointer user_data)
+                           dt_lib_module_t *self)
 {
-  dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_collect_t *d = (dt_lib_collect_t *)self->data;
   d->singleclick = dt_conf_get_bool("plugins/lighttable/collect/single-click");
 }
@@ -3564,9 +3563,8 @@ static void _history_pretty_print(const char *buf,
 }
 
 static void _history_show(GtkWidget *widget,
-                          gpointer user_data)
+                          dt_lib_module_t *self)
 {
-  dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   // we show a popup with all the history entries
   GtkMenuShell *pop = GTK_MENU_SHELL(gtk_menu_new());
   gtk_widget_set_size_request(GTK_WIDGET(pop), 200, -1);

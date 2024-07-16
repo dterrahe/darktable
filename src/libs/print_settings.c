@@ -610,9 +610,8 @@ static int _print_job_run(dt_job_t *job)
   return 0;
 }
 
-static void _page_new_area_clicked(GtkWidget *widget, gpointer user_data)
+static void _page_new_area_clicked(GtkWidget *widget, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   if(ps->imgs.count == MAX_IMAGE_PER_PAGE)
@@ -626,9 +625,8 @@ static void _page_new_area_clicked(GtkWidget *widget, gpointer user_data)
   ps->has_changed = TRUE;
 }
 
-static void _page_clear_area_clicked(GtkWidget *widget, gpointer user_data)
+static void _page_clear_area_clicked(GtkWidget *widget, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   ps->has_changed = TRUE;
@@ -664,9 +662,8 @@ static void _page_delete_area(const dt_lib_module_t *self,
   dt_control_queue_redraw_center();
 }
 
-static void _page_delete_area_clicked(GtkWidget *widget, gpointer user_data)
+static void _page_delete_area_clicked(GtkWidget *widget, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   _page_delete_area(self, ps->last_selected);
@@ -685,9 +682,8 @@ static void _print_job_cleanup(void *p)
   free(params);
 }
 
-static void _print_button_clicked(GtkWidget *widget, gpointer user_data)
+static void _print_button_clicked(GtkWidget *widget, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   dt_imgid_t imgid = NO_IMGID;
@@ -925,9 +921,8 @@ _update_slider(dt_lib_print_settings_t *ps)
 }
 
 static void
-_top_border_callback(GtkWidget *spin, gpointer user_data)
+_top_border_callback(GtkWidget *spin, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
   const double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin));
 
@@ -954,9 +949,8 @@ _top_border_callback(GtkWidget *spin, gpointer user_data)
 }
 
 static void
-_bottom_border_callback(GtkWidget *spin, gpointer user_data)
+_bottom_border_callback(GtkWidget *spin, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
   const double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin));
 
@@ -967,9 +961,8 @@ _bottom_border_callback(GtkWidget *spin, gpointer user_data)
 }
 
 static void
-_left_border_callback(GtkWidget *spin, gpointer user_data)
+_left_border_callback(GtkWidget *spin, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
   const double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin));
 
@@ -980,9 +973,8 @@ _left_border_callback(GtkWidget *spin, gpointer user_data)
 }
 
 static void
-_right_border_callback(GtkWidget *spin, gpointer user_data)
+_right_border_callback(GtkWidget *spin, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
   const double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin));
 
@@ -993,9 +985,8 @@ _right_border_callback(GtkWidget *spin, gpointer user_data)
 }
 
 static void
-_lock_callback(GtkWidget *button, gpointer user_data)
+_lock_callback(GtkWidget *button, dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   ps->lock_activated = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
@@ -1017,18 +1008,17 @@ _lock_callback(GtkWidget *button, gpointer user_data)
 }
 
 static void
-_alignment_callback(GtkWidget *tb, gpointer user_data)
+_alignment_callback(GtkWidget *tb, dt_lib_module_t *self)
 {
   if(darktable.gui->reset) return;
 
   int index=-1;
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   for(int i=0; i<9; i++)
   {
     /* block signal handler */
-    g_signal_handlers_block_by_func(ps->dtba[i],_alignment_callback, user_data);
+    g_signal_handlers_block_by_func(ps->dtba[i],_alignment_callback, self);
 
     if(GTK_WIDGET(ps->dtba[i]) == tb)
     {
@@ -1038,7 +1028,7 @@ _alignment_callback(GtkWidget *tb, gpointer user_data)
     else gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ps->dtba[i]), FALSE);
 
     /* unblock signal handler */
-    g_signal_handlers_unblock_by_func(ps->dtba[i], _alignment_callback, user_data);
+    g_signal_handlers_unblock_by_func(ps->dtba[i], _alignment_callback, self);
   }
 
   if(ps->last_selected != -1)
@@ -1308,9 +1298,8 @@ static void _load_image_full_page(dt_lib_print_settings_t *ps,
 
 static void _print_settings_update_callback(gpointer instance,
                                             const dt_imgid_t imgid,
-                                            gpointer user_data)
+                                            dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   // if a mipmap has arrived for an image just activated in fullpage
@@ -1327,9 +1316,8 @@ static void _print_settings_update_callback(gpointer instance,
 
 static void _print_settings_activate_callback(gpointer instance,
                                               const dt_imgid_t imgid,
-                                              gpointer user_data)
+                                              dt_lib_module_t *self)
 {
-  const dt_lib_module_t *self = (dt_lib_module_t *)user_data;
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
 
   // load an image with a simple click on the filmstrip only if a
