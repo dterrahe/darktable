@@ -2026,9 +2026,8 @@ static void _gui_sliders_update(struct dt_iop_module_t *self)
 
 static void temp_label_click(GtkWidget *label,
                              GdkEventButton *event,
-                             gpointer user_data)
+                             dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   dt_iop_temperature_gui_data_t *g = (dt_iop_temperature_gui_data_t *)self->gui_data;
 
   gchar *old_config = dt_conf_get_string("plugins/darkroom/temperature/colored_sliders");
@@ -2059,9 +2058,8 @@ static void temp_label_click(GtkWidget *label,
   _color_finetuning_slider(self);
 }
 
-static void _preference_changed(gpointer instance, gpointer user_data)
+static void _preference_changed(gpointer instance, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   dt_iop_temperature_gui_data_t *g = (dt_iop_temperature_gui_data_t *)self->gui_data;
 
   const char *config = dt_conf_get_string_const("plugins/darkroom/temperature/colored_sliders");

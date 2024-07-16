@@ -660,9 +660,8 @@ void gui_changed(dt_iop_module_t *self, GtkWidget *w, void *previous)
 
 #if 0
 static void
-radius_callback (GtkWidget *slider, gpointer user_data)
+radius_callback (GtkWidget *slider, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(darktable.gui->reset) return;
   dt_iop_dither_params_t *p = (dt_iop_dither_params_t *)self->params;
   p->random.radius = dt_bauhaus_slider_get(slider);
@@ -672,9 +671,8 @@ radius_callback (GtkWidget *slider, gpointer user_data)
 
 #if 0
 static void
-range_callback (GtkWidget *slider, gpointer user_data)
+range_callback (GtkWidget *slider, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(darktable.gui->reset) return;
   dt_iop_dither_params_t *p = (dt_iop_dither_params_t *)self->params;
   p->random.range[0] = dtgtk_gradient_slider_multivalue_get_value(DTGTK_GRADIENT_SLIDER(slider), 0);
