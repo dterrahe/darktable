@@ -616,7 +616,7 @@ void process(
   gboolean showmask = FALSE;
   if(self->dev->gui_attached && (piece->pipe->type & DT_DEV_PIXELPIPE_FULL))
   {
-    dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
+    dt_iop_demosaic_gui_data_t *g = self->gui_data;
     if(g->visual_mask)
     {
       showmask = TRUE;
@@ -781,7 +781,7 @@ int process_cl(
   gboolean showmask = FALSE;
   if(self->dev->gui_attached && (piece->pipe->type & DT_DEV_PIXELPIPE_FULL))
   {
-    dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
+    dt_iop_demosaic_gui_data_t *g = self->gui_data;
     if(g->visual_mask)
     {
       showmask = TRUE;
@@ -1149,7 +1149,7 @@ void cleanup_pipe(struct dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, dt_dev
 
 void reload_defaults(dt_iop_module_t *module)
 {
-  dt_iop_demosaic_params_t *d = (dt_iop_demosaic_params_t *)module->default_params;
+  dt_iop_demosaic_params_t *d = module->default_params;
 
   if(dt_image_is_monochrome(&module->dev->image_storage))
     d->demosaicing_method = DT_IOP_DEMOSAIC_PASSTHROUGH_MONOCHROME;
@@ -1169,8 +1169,8 @@ void reload_defaults(dt_iop_module_t *module)
 
 void gui_changed(dt_iop_module_t *self, GtkWidget *w, void *previous)
 {
-  dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
-  dt_iop_demosaic_params_t *p = (dt_iop_demosaic_params_t *)self->params;
+  dt_iop_demosaic_gui_data_t *g = self->gui_data;
+  dt_iop_demosaic_params_t *p = self->params;
 
   const gboolean bayer4  = self->dev->image_storage.flags & DT_IMAGE_4BAYER;
   const gboolean bayer = (self->dev->image_storage.buf_dsc.filters != 9u) && !bayer4;
@@ -1241,7 +1241,7 @@ void gui_changed(dt_iop_module_t *self, GtkWidget *w, void *previous)
 
 void gui_update(struct dt_iop_module_t *self)
 {
-  dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
+  dt_iop_demosaic_gui_data_t *g = self->gui_data;
   dt_bauhaus_widget_set_quad_active(g->dual_thrs, FALSE);
 
   g->visual_mask = FALSE;
@@ -1253,7 +1253,7 @@ void gui_update(struct dt_iop_module_t *self)
 static void _visualize_callback(GtkWidget *quad, dt_iop_module_t *self)
 {
   if(darktable.gui->reset) return;
-  dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
+  dt_iop_demosaic_gui_data_t *g = self->gui_data;
 
   g->visual_mask = dt_bauhaus_widget_get_quad_active(quad);
   dt_dev_reprocess_center(self->dev);
@@ -1261,7 +1261,7 @@ static void _visualize_callback(GtkWidget *quad, dt_iop_module_t *self)
 
 void gui_focus(struct dt_iop_module_t *self, gboolean in)
 {
-  dt_iop_demosaic_gui_data_t *g = (dt_iop_demosaic_gui_data_t *)self->gui_data;
+  dt_iop_demosaic_gui_data_t *g = self->gui_data;
   if(!in)
   {
     const gboolean was_dualmask = g->visual_mask;
