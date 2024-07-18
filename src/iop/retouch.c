@@ -302,8 +302,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_retouch_params_v1_t;
 
     const dt_iop_retouch_params_v1_t *o = (dt_iop_retouch_params_v1_t *)old_params;
-    dt_iop_retouch_params_v3_t *n =
-      (dt_iop_retouch_params_v3_t *)malloc(sizeof(dt_iop_retouch_params_v3_t));
+    dt_iop_retouch_params_v3_t *n = malloc(sizeof(dt_iop_retouch_params_v3_t));
 
     for(int i = 0; i < RETOUCH_NO_FORMS; i++)
     {
@@ -366,8 +365,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_retouch_params_v2_t;
 
     const dt_iop_retouch_params_v2_t *o = (dt_iop_retouch_params_v2_t *)old_params;
-    dt_iop_retouch_params_v3_t *n =
-      (dt_iop_retouch_params_v3_t *)malloc(sizeof(dt_iop_retouch_params_v3_t));
+    dt_iop_retouch_params_v3_t *n = malloc(sizeof(dt_iop_retouch_params_v3_t));
 
     memcpy(n, o, sizeof(dt_iop_retouch_params_v2_t));
 
@@ -415,7 +413,7 @@ static dt_masks_point_group_t *rt_get_mask_point_group(dt_iop_module_t *self,
   {
     for(const GList *forms = grp->points; forms; forms = g_list_next(forms))
     {
-      dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+      dt_masks_point_group_t *grpt = forms->data;
       if(grpt->formid == formid)
       {
         form_point_group = grpt;
@@ -676,7 +674,7 @@ static void rt_show_forms_for_current_scale(dt_iop_module_t *self)
     return;
 
   dt_iop_retouch_params_t *p = self->params;
-  dt_iop_gui_blend_data_t *bd = (dt_iop_gui_blend_data_t *)self->blend_data;
+  dt_iop_gui_blend_data_t *bd = self->blend_data;
   dt_iop_retouch_gui_data_t *g = self->gui_data;
   if(bd == NULL) return;
 
@@ -720,8 +718,7 @@ static void rt_show_forms_for_current_scale(dt_iop_module_t *self)
       dt_masks_form_t *form = dt_masks_get_from_id(darktable.develop, formid);
       if(form)
       {
-        dt_masks_point_group_t *fpt =
-          (dt_masks_point_group_t *)malloc(sizeof(dt_masks_point_group_t));
+        dt_masks_point_group_t *fpt = malloc(sizeof(dt_masks_point_group_t));
         fpt->formid = formid;
         fpt->parentid = grid;
         fpt->state = DT_MASKS_STATE_USE;
@@ -763,7 +760,7 @@ static void rt_resynch_params(struct dt_iop_module_t *self)
         (new_form_index < RETOUCH_NO_FORMS) && forms;
         forms = g_list_next(forms))
     {
-      dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+      dt_masks_point_group_t *grpt = forms->data;
       if(grpt)
       {
         const dt_mask_id_t formid = grpt->formid;
@@ -917,28 +914,28 @@ static int rt_masks_get_delta_to_destination(dt_iop_module_t *self,
 
   if(form->type & DT_MASKS_PATH)
   {
-    const dt_masks_point_path_t *pt = (dt_masks_point_path_t *)form->points->data;
+    const dt_masks_point_path_t *pt = form->points->data;
 
     res = rt_masks_point_calc_delta(self, piece, roi, pt->corner,
                                     form->source, dx, dy, distort_mode);
   }
   else if(form->type & DT_MASKS_CIRCLE)
   {
-    const dt_masks_point_circle_t *pt = (dt_masks_point_circle_t *)form->points->data;
+    const dt_masks_point_circle_t *pt = form->points->data;
 
     res = rt_masks_point_calc_delta(self, piece, roi, pt->center,
                                     form->source, dx, dy, distort_mode);
   }
   else if(form->type & DT_MASKS_ELLIPSE)
   {
-    const dt_masks_point_ellipse_t *pt = (dt_masks_point_ellipse_t *)form->points->data;
+    const dt_masks_point_ellipse_t *pt = form->points->data;
 
     res = rt_masks_point_calc_delta(self, piece, roi, pt->center,
                                     form->source, dx, dy, distort_mode);
   }
   else if(form->type & DT_MASKS_BRUSH)
   {
-    const dt_masks_point_brush_t *pt = (dt_masks_point_brush_t *)form->points->data;
+    const dt_masks_point_brush_t *pt = form->points->data;
 
     res = rt_masks_point_calc_delta(self, piece, roi, pt->corner,
                                     form->source, dx, dy, distort_mode);
@@ -1014,7 +1011,7 @@ static gboolean rt_shape_is_being_added(dt_iop_module_t *self,
       GList *forms = self->dev->form_visible->points;
       if(forms)
       {
-        dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+        dt_masks_point_group_t *grpt = forms->data;
         if(grpt)
         {
           const dt_masks_form_t *form =
@@ -1038,7 +1035,7 @@ static gboolean rt_add_shape(GtkWidget *widget,
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(self->off), TRUE);
 
   //switch mask edit mode off
-  dt_iop_gui_blend_data_t *bd = (dt_iop_gui_blend_data_t *)self->blend_data;
+  dt_iop_gui_blend_data_t *bd = self->blend_data;
   if(bd) bd->masks_shown = DT_MASKS_EDIT_OFF;
 
   const int allow = rt_allow_create_form(self);
@@ -1832,7 +1829,7 @@ static gboolean rt_edit_masks_callback(GtkWidget *widget,
     return FALSE;
   }
 
-  dt_iop_gui_blend_data_t *bd = (dt_iop_gui_blend_data_t *)self->blend_data;
+  dt_iop_gui_blend_data_t *bd = self->blend_data;
   dt_iop_retouch_gui_data_t *g = self->gui_data;
 
   //hide all shapes and free if some are in creation
@@ -2156,8 +2153,7 @@ void init(dt_iop_module_t *module)
 void init_global(dt_iop_module_so_t *module)
 {
   const int program = 21; // retouch.cl, from programs.conf
-  dt_iop_retouch_global_data_t *gd =
-    (dt_iop_retouch_global_data_t *)malloc(sizeof(dt_iop_retouch_global_data_t));
+  dt_iop_retouch_global_data_t *gd = malloc(sizeof(dt_iop_retouch_global_data_t));
   module->data = gd;
   gd->kernel_retouch_clear_alpha =
     dt_opencl_create_kernel(program, "retouch_clear_alpha");
@@ -2183,7 +2179,7 @@ void init_global(dt_iop_module_so_t *module)
 
 void cleanup_global(dt_iop_module_so_t *module)
 {
-  dt_iop_retouch_global_data_t *gd = (dt_iop_retouch_global_data_t *)module->data;
+  dt_iop_retouch_global_data_t *gd = module->data;
 
   dt_opencl_free_kernel(gd->kernel_retouch_clear_alpha);
   dt_opencl_free_kernel(gd->kernel_retouch_copy_alpha);
@@ -2210,7 +2206,7 @@ void gui_focus(struct dt_iop_module_t *self,
 
     if(in)
     {
-      dt_iop_gui_blend_data_t *bd = (dt_iop_gui_blend_data_t *)self->blend_data;
+      dt_iop_gui_blend_data_t *bd = self->blend_data;
       //only show shapes if shapes exist
       dt_masks_form_t *grp =
         dt_masks_get_from_id(darktable.develop, self->blend_params->mask_id);
@@ -2382,7 +2378,7 @@ void gui_update(dt_iop_module_t *self)
   rt_show_hide_controls(self);
 
   // update edit shapes status
-  dt_iop_gui_blend_data_t *bd = (dt_iop_gui_blend_data_t *)self->blend_data;
+  dt_iop_gui_blend_data_t *bd = self->blend_data;
   if(darktable.develop->history_updating)
     bd->masks_shown = DT_MASKS_EDIT_OFF;
 
@@ -2814,7 +2810,7 @@ static void rt_compute_roi_in(struct dt_iop_module_t *self,
                               int *_roix,
                               int *_roiy)
 {
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
+  dt_iop_retouch_params_t *p = piece->data;
   dt_develop_blend_params_t *bp = piece->blendop_data;
 
   int roir = *_roir;
@@ -2828,7 +2824,7 @@ static void rt_compute_roi_in(struct dt_iop_module_t *self,
   {
     for(const GList *forms = grp->points; forms; forms = g_list_next(forms))
     {
-      const dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+      const dt_masks_point_group_t *grpt = forms->data;
       if(grpt)
       {
         const dt_mask_id_t formid = grpt->formid;
@@ -2930,7 +2926,7 @@ static void rt_extend_roi_in_from_source_clones(struct dt_iop_module_t *self,
                                                 int *_roix,
                                                 int *_roiy)
 {
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
+  dt_iop_retouch_params_t *p = piece->data;
   dt_develop_blend_params_t *bp = piece->blendop_data;
 
   int roir = *_roir;
@@ -2945,7 +2941,7 @@ static void rt_extend_roi_in_from_source_clones(struct dt_iop_module_t *self,
   {
     for(const GList *forms = grp->points; forms; forms = g_list_next(forms))
     {
-      const dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+      const dt_masks_point_group_t *grpt = forms->data;
       if(grpt)
       {
         const dt_mask_id_t formid = grpt->formid;
@@ -3029,7 +3025,7 @@ static void rt_extend_roi_in_for_clone(struct dt_iop_module_t *self,
                                        int *_roix,
                                        int *_roiy)
 {
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
+  dt_iop_retouch_params_t *p = piece->data;
   dt_develop_blend_params_t *bp = piece->blendop_data;
 
   int roir = *_roir;
@@ -3043,7 +3039,7 @@ static void rt_extend_roi_in_for_clone(struct dt_iop_module_t *self,
   {
     for(const GList *forms = grp->points; forms; forms = g_list_next(forms))
     {
-      dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+      dt_masks_point_group_t *grpt = forms->data;
       if(grpt)
       {
         const dt_mask_id_t formid = grpt->formid;
@@ -3677,8 +3673,8 @@ static void rt_process_forms(float *layer, dwt_params_t *const wt_p, const int s
   // do not process the reconstructed image
   if(scale > wt_p->scales + 1) return;
 
-  dt_develop_blend_params_t *bp = (dt_develop_blend_params_t *)piece->blendop_data;
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
+  dt_develop_blend_params_t *bp = piece->blendop_data;
+  dt_iop_retouch_params_t *p = piece->data;
   dt_iop_roi_t *roi_layer = &usr_d->roi;
   const gboolean mask_display = usr_d->mask_display && (scale == usr_d->display_scale);
 
@@ -3701,7 +3697,7 @@ static void rt_process_forms(float *layer, dwt_params_t *const wt_p, const int s
     {
       for(const GList *forms = grp->points; forms; forms = g_list_next(forms))
       {
-        const dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+        const dt_masks_point_group_t *grpt = forms->data;
         if(grpt == NULL)
         {
           dt_print(DT_DEBUG_ALWAYS, "rt_process_forms: invalid form\n");
@@ -3866,7 +3862,7 @@ void process(struct dt_iop_module_t *self,
                                         ivoid, ovoid, roi_in, roi_out))
     return;
 
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
+  dt_iop_retouch_params_t *p = piece->data;
   dt_iop_retouch_gui_data_t *g = self->gui_data;
 
   float *in_retouch = NULL;
@@ -4601,9 +4597,9 @@ static cl_int rt_process_forms_cl(cl_mem dev_layer,
   // do not process the reconstructed image
   if(scale > wt_p->scales + 1) return err;
 
-  dt_develop_blend_params_t *bp = (dt_develop_blend_params_t *)piece->blendop_data;
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
-  dt_iop_retouch_global_data_t *gd = (dt_iop_retouch_global_data_t *)self->global_data;
+  dt_develop_blend_params_t *bp = piece->blendop_data;
+  dt_iop_retouch_params_t *p = piece->data;
+  dt_iop_retouch_global_data_t *gd = self->global_data;
   const int devid = piece->pipe->devid;
   dt_iop_roi_t *roi_layer = &usr_d->roi;
   const gboolean mask_display = usr_d->mask_display && (scale == usr_d->display_scale);
@@ -4629,7 +4625,7 @@ static cl_int rt_process_forms_cl(cl_mem dev_layer,
           forms && err == CL_SUCCESS;
           forms = g_list_next(forms))
       {
-        dt_masks_point_group_t *grpt = (dt_masks_point_group_t *)forms->data;
+        dt_masks_point_group_t *grpt = forms->data;
         if(grpt == NULL)
         {
           dt_print(DT_DEBUG_ALWAYS, "rt_process_forms: invalid form\n");
@@ -4812,8 +4808,8 @@ int process_cl(struct dt_iop_module_t *self,
                const dt_iop_roi_t *const roi_in,
                const dt_iop_roi_t *const roi_out)
 {
-  dt_iop_retouch_params_t *p = (dt_iop_retouch_params_t *)piece->data;
-  dt_iop_retouch_global_data_t *gd = (dt_iop_retouch_global_data_t *)self->global_data;
+  dt_iop_retouch_params_t *p = piece->data;
+  dt_iop_retouch_global_data_t *gd = self->global_data;
   dt_iop_retouch_gui_data_t *g = self->gui_data;
 
   cl_int err = CL_SUCCESS;

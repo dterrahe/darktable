@@ -600,8 +600,7 @@ void gui_reset(dt_lib_module_t *self)
         profiles;
         profiles = g_list_next(profiles))
     {
-      const dt_colorspaces_color_profile_t *pp =
-        (dt_colorspaces_color_profile_t *)profiles->data;
+      const dt_colorspaces_color_profile_t *pp = profiles->data;
       if(pp->out_pos > -1
          && icctype == pp->type
          && (icctype != DT_COLORSPACE_FILE || !strcmp(iccfilename, pp->filename)))
@@ -782,7 +781,7 @@ static void set_storage_by_name(dt_lib_export_t *d,
 
   for(const GList *it = darktable.imageio->plugins_storage; it; it = g_list_next(it))
   {
-    dt_imageio_module_storage_t *storage = (dt_imageio_module_storage_t *)it->data;
+    dt_imageio_module_storage_t *storage = it->data;
     k++;
     if(strcmp(storage->name(storage), name) == 0
        || strcmp(storage->plugin_name, name) == 0)
@@ -855,8 +854,7 @@ static void _profile_changed(GtkWidget *widget, dt_lib_export_t *d)
         profiles;
         profiles = g_list_next(profiles))
     {
-      const dt_colorspaces_color_profile_t *pp =
-        (dt_colorspaces_color_profile_t *)profiles->data;
+      const dt_colorspaces_color_profile_t *pp = profiles->data;
       if(pp->out_pos == pos)
       {
         dt_conf_set_int(CONFIG_PREFIX "icctype", pp->type);
@@ -1059,7 +1057,7 @@ static void _update_formats_combobox(dt_lib_export_t *d)
   gboolean empty = TRUE;
   for(const GList *it = darktable.imageio->plugins_format; it; it = g_list_next(it))
   {
-    dt_imageio_module_format_t *format = (dt_imageio_module_format_t *)it->data;
+    dt_imageio_module_format_t *format = it->data;
     if(storage->supported(storage, format))
     {
       dt_bauhaus_combobox_add(d->format, format->name());
@@ -1081,7 +1079,7 @@ static void _on_storage_list_changed(gpointer instance,
 
   for(const GList *it = darktable.imageio->plugins_storage; it; it = g_list_next(it))
   {
-    const dt_imageio_module_storage_t *module = (dt_imageio_module_storage_t *)it->data;
+    const dt_imageio_module_storage_t *module = it->data;
     dt_bauhaus_combobox_add(d->storage, module->name(module));
     if(module->widget)
     {
@@ -1102,7 +1100,7 @@ static void _lib_export_styles_changed_callback(gpointer instance,
   GList *styles = dt_styles_get_list("");
   for(const GList *st_iter = styles; st_iter; st_iter = g_list_next(st_iter))
   {
-    const dt_style_t *style = (dt_style_t *)st_iter->data;
+    const dt_style_t *style = st_iter->data;
     dt_bauhaus_combobox_add(d->style, style->name);
   }
   dt_bauhaus_combobox_set(d->style, 0);
@@ -1153,7 +1151,7 @@ void gui_init(dt_lib_module_t *self)
       it;
       it = g_list_next(it))
   {
-    const dt_imageio_module_storage_t *module = (dt_imageio_module_storage_t *)it->data;
+    const dt_imageio_module_storage_t *module = it->data;
     dt_bauhaus_combobox_add(d->storage, module->name(module));
     if(module->widget)
     {
@@ -1182,7 +1180,7 @@ void gui_init(dt_lib_module_t *self)
   gtk_box_pack_start(GTK_BOX(self->widget), d->format_extra_container, FALSE, TRUE, 0);
   for(const GList *it = darktable.imageio->plugins_format; it; it = g_list_next(it))
   {
-    const dt_imageio_module_format_t *module = (dt_imageio_module_format_t *)it->data;
+    const dt_imageio_module_format_t *module = it->data;
     if(module->widget)
     {
       gtk_container_add(GTK_CONTAINER(d->format_extra_container), module->widget);
@@ -1321,7 +1319,7 @@ void gui_init(dt_lib_module_t *self)
   dt_bauhaus_combobox_add(d->profile, _("image settings"));
   for(GList *l = darktable.color_profiles->profiles; l; l = g_list_next(l))
   {
-    const dt_colorspaces_color_profile_t *prof = (dt_colorspaces_color_profile_t *)l->data;
+    const dt_colorspaces_color_profile_t *prof = l->data;
     if(prof->out_pos > -1)
       dt_bauhaus_combobox_add(d->profile, prof->name);
   }
@@ -1446,8 +1444,7 @@ void gui_init(dt_lib_module_t *self)
         profiles;
         profiles = g_list_next(profiles))
     {
-      const dt_colorspaces_color_profile_t *pp =
-        (dt_colorspaces_color_profile_t *)profiles->data;
+      const dt_colorspaces_color_profile_t *pp = profiles->data;
       if(pp->out_pos > -1
          && icctype == pp->type
          && (icctype != DT_COLORSPACE_FILE || !strcmp(iccfilename, pp->filename)))
@@ -1506,14 +1503,14 @@ void gui_cleanup(dt_lib_module_t *self)
 
   for(const GList *it = darktable.imageio->plugins_storage; it; it = g_list_next(it))
   {
-    dt_imageio_module_storage_t *module = (dt_imageio_module_storage_t *)it->data;
+    dt_imageio_module_storage_t *module = it->data;
     if(module->widget)
       gtk_container_remove(GTK_CONTAINER(d->storage_extra_container), module->widget);
   }
 
   for(const GList *it = darktable.imageio->plugins_format; it; it = g_list_next(it))
   {
-    dt_imageio_module_format_t *module = (dt_imageio_module_format_t *)it->data;
+    dt_imageio_module_format_t *module = it->data;
     if(module->widget)
       gtk_container_remove(GTK_CONTAINER(d->format_extra_container), module->widget);
   }
@@ -2119,8 +2116,7 @@ int set_params(dt_lib_module_t *self,
         iter;
         iter = g_list_next(iter))
     {
-      const dt_colorspaces_color_profile_t *pp =
-        (dt_colorspaces_color_profile_t *)iter->data;
+      const dt_colorspaces_color_profile_t *pp = iter->data;
       if(pp->out_pos > -1
          && icctype == pp->type
          && (icctype != DT_COLORSPACE_FILE || !strcmp(iccfilename, pp->filename)))

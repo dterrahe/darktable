@@ -95,7 +95,7 @@ void dt_view_manager_gui_init(dt_view_manager_t *vm)
 {
   for(GList *iter = vm->views; iter; iter = g_list_next(iter))
   {
-    dt_view_t *view = (dt_view_t *)iter->data;
+    dt_view_t *view = iter->data;
     if(view->gui_init) view->gui_init(view);
   }
 }
@@ -237,7 +237,7 @@ gboolean dt_view_manager_switch(dt_view_manager_t *vm,
   {
     for(GList *iter = vm->views; iter; iter = g_list_next(iter))
     {
-      dt_view_t *v = (dt_view_t *)iter->data;
+      dt_view_t *v = iter->data;
       if(!g_ascii_strcasecmp(v->module_name, view_name))
       {
         new_view = v;
@@ -291,7 +291,7 @@ gboolean dt_view_manager_switch_by_view(dt_view_manager_t *vm,
           iter;
           iter = g_list_next(iter))
       {
-        dt_lib_module_t *plugin = (dt_lib_module_t *)(iter->data);
+        dt_lib_module_t *plugin = iter->data;
 
         /* does this module belong to current view ?*/
         if(dt_lib_is_visible_in_view(plugin, old_view))
@@ -342,7 +342,7 @@ gboolean dt_view_manager_switch_by_view(dt_view_manager_t *vm,
         iter;
         iter = g_list_next(iter))
     {
-      dt_lib_module_t *plugin = (dt_lib_module_t *)(iter->data);
+      dt_lib_module_t *plugin = iter->data;
 
       /* does this module belong to current view ?*/
       if(dt_lib_is_visible_in_view(plugin, old_view))
@@ -370,7 +370,7 @@ gboolean dt_view_manager_switch_by_view(dt_view_manager_t *vm,
       iter;
       iter = g_list_previous(iter))
   {
-    dt_lib_module_t *plugin = (dt_lib_module_t *)(iter->data);
+    dt_lib_module_t *plugin = iter->data;
     if(dt_lib_is_visible_in_view(plugin, new_view))
     {
       /* try get the module expander  */
@@ -495,7 +495,7 @@ void dt_view_manager_expose(dt_view_manager_t *vm,
         plugins;
         plugins = g_list_previous(plugins))
     {
-      dt_lib_module_t *plugin = (dt_lib_module_t *)(plugins->data);
+      dt_lib_module_t *plugin = plugins->data;
 
       /* does this module belong to current view ?*/
       if(plugin->gui_post_expose
@@ -526,7 +526,7 @@ void dt_view_manager_mouse_leave(dt_view_manager_t *vm)
       plugins;
       plugins = g_list_previous(plugins))
   {
-    dt_lib_module_t *plugin = (dt_lib_module_t *)(plugins->data);
+    dt_lib_module_t *plugin = plugins->data;
 
     /* does this module belong to current view ?*/
     if(plugin->mouse_leave && dt_lib_is_visible_in_view(plugin, v))
@@ -562,7 +562,7 @@ void dt_view_manager_mouse_moved(dt_view_manager_t *vm,
       plugins;
       plugins = g_list_previous(plugins))
   {
-    dt_lib_module_t *plugin = (dt_lib_module_t *)(plugins->data);
+    dt_lib_module_t *plugin = plugins->data;
 
     /* does this module belong to current view ?*/
     if(plugin->mouse_moved && dt_lib_is_visible_in_view(plugin, v))
@@ -591,7 +591,7 @@ int dt_view_manager_button_released(dt_view_manager_t *vm,
       plugins;
       plugins = g_list_previous(plugins))
   {
-    dt_lib_module_t *plugin = (dt_lib_module_t *)(plugins->data);
+    dt_lib_module_t *plugin = plugins->data;
 
     /* does this module belong to current view ?*/
     if(plugin->button_released && dt_lib_is_visible_in_view(plugin, v))
@@ -626,7 +626,7 @@ int dt_view_manager_button_pressed(dt_view_manager_t *vm,
       plugins && !handled;
       plugins = g_list_previous(plugins))
   {
-    dt_lib_module_t *plugin = (dt_lib_module_t *)(plugins->data);
+    dt_lib_module_t *plugin = plugins->data;
 
     /* does this module belong to current view ?*/
     if(plugin->button_pressed && dt_lib_is_visible_in_view(plugin, v))
@@ -650,7 +650,7 @@ void dt_view_manager_configure(dt_view_manager_t *vm,
   for(GList *iter = vm->views; iter; iter = g_list_next(iter))
   {
     // this is necessary for all
-    dt_view_t *v = (dt_view_t *)iter->data;
+    dt_view_t *v = iter->data;
     v->width = width;
     v->height = height;
     if(v->configure)

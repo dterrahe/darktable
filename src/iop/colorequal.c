@@ -276,7 +276,7 @@ void tiling_callback(struct dt_iop_module_t *self,
                      const dt_iop_roi_t *roi_out,
                      struct dt_develop_tiling_t *tiling)
 {
-  dt_iop_colorequal_data_t *data = (dt_iop_colorequal_data_t *)piece->data;
+  dt_iop_colorequal_data_t *data = piece->data;
 
   tiling->maxbuf = 1.0f;
   tiling->xalign = 1;
@@ -307,10 +307,8 @@ int legacy_params(dt_iop_module_t *self,
 {
   if(old_version == 1)
   {
-    const dt_iop_colorequal_params_t *o =
-      (dt_iop_colorequal_params_t *)old_params;
-    dt_iop_colorequal_params_t *n =
-      (dt_iop_colorequal_params_t *)malloc(sizeof(dt_iop_colorequal_params_t));
+    const dt_iop_colorequal_params_t *o = old_params;
+    dt_iop_colorequal_params_t *n = malloc(sizeof(dt_iop_colorequal_params_t));
 
     memcpy(n, o, sizeof(dt_iop_colorequal_params_t) - sizeof(float));
     n->hue_shift = 0.0f;
@@ -322,10 +320,8 @@ int legacy_params(dt_iop_module_t *self,
 
   if(old_version == 2)
   {
-    const dt_iop_colorequal_params_t *o =
-      (dt_iop_colorequal_params_t *)old_params;
-    dt_iop_colorequal_params_t *n =
-      (dt_iop_colorequal_params_t *)malloc(sizeof(dt_iop_colorequal_params_t));
+    const dt_iop_colorequal_params_t *o = old_params;
+    dt_iop_colorequal_params_t *n = malloc(sizeof(dt_iop_colorequal_params_t));
 
     memcpy(n, o, sizeof(dt_iop_colorequal_params_t) - sizeof(float));
     n->threshold = 0.024f;  // in v1/2 we had an inflection point of 0.1
@@ -349,10 +345,8 @@ int legacy_params(dt_iop_module_t *self,
 
   if(old_version == 3)
   {
-    const dt_iop_colorequal_params_t *o =
-      (dt_iop_colorequal_params_t *)old_params;
-    dt_iop_colorequal_params_t *n =
-      (dt_iop_colorequal_params_t *)malloc(sizeof(dt_iop_colorequal_params_t));
+    const dt_iop_colorequal_params_t *o = old_params;
+    dt_iop_colorequal_params_t *n = malloc(sizeof(dt_iop_colorequal_params_t));
 
     memcpy(n, o, sizeof(dt_iop_colorequal_params_t) - sizeof(float));
     n->threshold = o->threshold + 0.1f;
@@ -914,7 +908,7 @@ void process(struct dt_iop_module_t *self,
     dt_iop_copy_image_roi(o, i, piece->colors, roi_in, roi_out);
     return;
   }
-  dt_iop_colorequal_data_t *d = (dt_iop_colorequal_data_t *)piece->data;
+  dt_iop_colorequal_data_t *d = piece->data;
   dt_iop_colorequal_gui_data_t *g = self->gui_data;
   const gboolean fullpipe = piece->pipe->type & DT_DEV_PIXELPIPE_FULL;
   const int mask_mode = g && fullpipe ? g->mask_mode : 0;
@@ -1224,7 +1218,7 @@ void init_pipe(struct dt_iop_module_t *self,
                dt_dev_pixelpipe_iop_t *piece)
 {
   piece->data = dt_calloc_aligned(sizeof(dt_iop_colorequal_data_t));
-  dt_iop_colorequal_data_t *d = (dt_iop_colorequal_data_t *)piece->data;
+  dt_iop_colorequal_data_t *d = piece->data;
   d->LUT_saturation = dt_alloc_align_float(LUT_ELEM);
   d->LUT_hue = dt_alloc_align_float(LUT_ELEM);
   d->LUT_brightness = dt_alloc_align_float(LUT_ELEM);
@@ -1238,7 +1232,7 @@ void cleanup_pipe(struct dt_iop_module_t *self,
                   dt_dev_pixelpipe_t *pipe,
                   dt_dev_pixelpipe_iop_t *piece)
 {
-  dt_iop_colorequal_data_t *d = (dt_iop_colorequal_data_t *)piece->data;
+  dt_iop_colorequal_data_t *d = piece->data;
   dt_free_align(d->LUT_saturation);
   dt_free_align(d->LUT_hue);
   dt_free_align(d->LUT_brightness);
@@ -1296,7 +1290,7 @@ void commit_params(struct dt_iop_module_t *self,
                    dt_dev_pixelpipe_iop_t *piece)
 {
   dt_iop_colorequal_params_t *p = (dt_iop_colorequal_params_t *)p1;
-  dt_iop_colorequal_data_t *d = (dt_iop_colorequal_data_t *)piece->data;
+  dt_iop_colorequal_data_t *d = piece->data;
 
   d->white_level = exp2f(p->white_level);
   d->chroma_size = p->chroma_size;

@@ -345,7 +345,7 @@ void dt_dev_pixelpipe_cleanup_nodes(dt_dev_pixelpipe_t *pipe)
   // destroy all nodes
   for(GList *nodes = pipe->nodes; nodes; nodes = g_list_next(nodes))
   {
-    dt_dev_pixelpipe_iop_t *piece = (dt_dev_pixelpipe_iop_t *)nodes->data;
+    dt_dev_pixelpipe_iop_t *piece = nodes->data;
     // printf("cleanup module `%s'\n", piece->module->name());
     piece->module->cleanup_pipe(piece->module, pipe, piece);
     free(piece->blendop_data);
@@ -402,9 +402,8 @@ void dt_dev_pixelpipe_create_nodes(dt_dev_pixelpipe_t *pipe,
   pipe->iop = g_list_copy(dev->iop);
   for(GList *modules = pipe->iop; modules; modules = g_list_next(modules))
   {
-    dt_iop_module_t *module = (dt_iop_module_t *)modules->data;
-    dt_dev_pixelpipe_iop_t *piece =
-      (dt_dev_pixelpipe_iop_t *)calloc(1, sizeof(dt_dev_pixelpipe_iop_t));
+    dt_iop_module_t *module = modules->data;
+    dt_dev_pixelpipe_iop_t *piece = calloc(1, sizeof(dt_dev_pixelpipe_iop_t));
     piece->enabled = module->enabled;
     piece->request_histogram = DT_REQUEST_ONLY_IN_GUI;
     piece->histogram_params.roi = NULL;
@@ -442,7 +441,7 @@ static void _dev_pixelpipe_synch(dt_dev_pixelpipe_t *pipe,
                                  dt_develop_t *dev,
                                  GList *history)
 {
-  dt_dev_history_item_t *hist = (dt_dev_history_item_t *)history->data;
+  dt_dev_history_item_t *hist = history->data;
   // find piece in nodes list
   dt_dev_pixelpipe_iop_t *piece = NULL;
 
@@ -564,7 +563,7 @@ void dt_dev_pixelpipe_synch_all(dt_dev_pixelpipe_t *pipe, dt_develop_t *dev)
   // utility modules that don't have an history stack
   for(GList *nodes = pipe->nodes; nodes; nodes = g_list_next(nodes))
   {
-    dt_dev_pixelpipe_iop_t *piece = (dt_dev_pixelpipe_iop_t *)nodes->data;
+    dt_dev_pixelpipe_iop_t *piece = nodes->data;
     piece->hash = 0;
     piece->enabled = piece->module->default_enabled;
     dt_iop_commit_params(piece->module,
@@ -598,7 +597,7 @@ void dt_dev_pixelpipe_synch_top(dt_dev_pixelpipe_t *pipe, dt_develop_t *dev)
   GList *history = g_list_nth(dev->history, dev->history_end - 1);
   if(history)
   {
-    dt_dev_history_item_t *hist = (dt_dev_history_item_t *)history->data;
+    dt_dev_history_item_t *hist = history->data;
     dt_print_pipe(DT_DEBUG_PARAMS, "synch top history module",
       pipe, hist->module, DT_DEVICE_NONE, NULL, NULL, "\n");
     _dev_pixelpipe_synch(pipe, dev, history);
@@ -2472,7 +2471,7 @@ gboolean dt_dev_pixelpipe_process_no_gamma(
 {
   // temporarily disable gamma mapping.
   GList *gammap = g_list_last(pipe->nodes);
-  dt_dev_pixelpipe_iop_t *gamma = (dt_dev_pixelpipe_iop_t *)gammap->data;
+  dt_dev_pixelpipe_iop_t *gamma = gammap->data;
 
   while(!dt_iop_module_is(gamma->module->so, "gamma"))
   {
@@ -2491,7 +2490,7 @@ gboolean dt_dev_pixelpipe_process_no_gamma(
 void dt_dev_pixelpipe_disable_after(dt_dev_pixelpipe_t *pipe, const char *op)
 {
   GList *nodes = g_list_last(pipe->nodes);
-  dt_dev_pixelpipe_iop_t *piece = (dt_dev_pixelpipe_iop_t *)nodes->data;
+  dt_dev_pixelpipe_iop_t *piece = nodes->data;
   while(!dt_iop_module_is(piece->module->so, op))
   {
     piece->enabled = FALSE;
@@ -2505,7 +2504,7 @@ void dt_dev_pixelpipe_disable_after(dt_dev_pixelpipe_t *pipe, const char *op)
 void dt_dev_pixelpipe_disable_before(dt_dev_pixelpipe_t *pipe, const char *op)
 {
   GList *nodes = pipe->nodes;
-  dt_dev_pixelpipe_iop_t *piece = (dt_dev_pixelpipe_iop_t *)nodes->data;
+  dt_dev_pixelpipe_iop_t *piece = nodes->data;
   while(!dt_iop_module_is(piece->module->so, op))
   {
     piece->enabled = FALSE;
@@ -2774,8 +2773,8 @@ void dt_dev_pixelpipe_get_dimensions(dt_dev_pixelpipe_t *pipe,
   GList *pieces = pipe->nodes;
   while(modules)
   {
-    dt_iop_module_t *module = (dt_iop_module_t *)modules->data;
-    dt_dev_pixelpipe_iop_t *piece = (dt_dev_pixelpipe_iop_t *)pieces->data;
+    dt_iop_module_t *module = modules->data;
+    dt_dev_pixelpipe_iop_t *piece = pieces->data;
 
     piece->buf_in = roi_in;
 
@@ -2839,7 +2838,7 @@ float *dt_dev_get_raster_mask(struct dt_dev_pixelpipe_iop_t *piece,
       source_iter;
       source_iter = g_list_next(source_iter))
   {
-    const dt_dev_pixelpipe_iop_t *candidate = (dt_dev_pixelpipe_iop_t *)source_iter->data;
+    const dt_dev_pixelpipe_iop_t *candidate = source_iter->data;
 
     if(target_module
        && ((candidate->module == target_module)
@@ -2868,8 +2867,7 @@ float *dt_dev_get_raster_mask(struct dt_dev_pixelpipe_iop_t *piece,
   // we found the raster_mask source module
   if(source_iter)
   {
-    const dt_dev_pixelpipe_iop_t *source_piece =
-      (dt_dev_pixelpipe_iop_t *)source_iter->data;
+    const dt_dev_pixelpipe_iop_t *source_piece = source_iter->data;
 
     const gboolean source_enabled = source_piece && source_piece->enabled;
     const int maskmode = source_enabled ? source_piece->module->blend_params->mask_mode : 0;
@@ -2913,7 +2911,7 @@ float *dt_dev_get_raster_mask(struct dt_dev_pixelpipe_iop_t *piece,
       {
         for(GList *iter = g_list_next(source_iter); iter; iter = g_list_next(iter))
         {
-          dt_dev_pixelpipe_iop_t *it_piece = (dt_dev_pixelpipe_iop_t *)iter->data;
+          dt_dev_pixelpipe_iop_t *it_piece = iter->data;
 
           if(!_skip_piece_on_tags(it_piece))
           {
@@ -3143,7 +3141,7 @@ float *dt_dev_distort_detail_mask(dt_dev_pixelpipe_iop_t *piece,
   GList *source_iter;
   for(source_iter = pipe->nodes; source_iter; source_iter = g_list_next(source_iter))
   {
-    const dt_dev_pixelpipe_iop_t *candidate = (dt_dev_pixelpipe_iop_t *)source_iter->data;
+    const dt_dev_pixelpipe_iop_t *candidate = source_iter->data;
     if(dt_iop_module_is(candidate->module->so, "demosaic")
        && candidate->enabled
        && raw_img)
@@ -3169,7 +3167,7 @@ float *dt_dev_distort_detail_mask(dt_dev_pixelpipe_iop_t *piece,
   {
     for(GList *iter = source_iter; iter; iter = g_list_next(iter))
     {
-      dt_dev_pixelpipe_iop_t *it_piece = (dt_dev_pixelpipe_iop_t *)iter->data;
+      dt_dev_pixelpipe_iop_t *it_piece = iter->data;
       if(!_skip_piece_on_tags(it_piece))
       {
         // hack against pipes not using finalscale

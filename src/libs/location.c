@@ -731,7 +731,7 @@ void *get_params(dt_lib_module_t *self,
   float *points = (float *)((uint8_t *)params + size_fixed + size_name);
   for(GList *iter = location->marker_points; iter; iter = g_list_next(iter), points += 2)
   {
-    dt_geo_map_display_point_t *point = (dt_geo_map_display_point_t *)iter->data;
+    dt_geo_map_display_point_t *point = iter->data;
     points[0] = point->lat;
     points[1] = point->lon;
   }
@@ -781,8 +781,7 @@ int set_params(dt_lib_module_t *self,
       (uint8_t *)points < (uint8_t *)params + size;
       points += 2)
   {
-    dt_geo_map_display_point_t *p =
-      (dt_geo_map_display_point_t *)malloc(sizeof(dt_geo_map_display_point_t));
+    dt_geo_map_display_point_t *p = malloc(sizeof(dt_geo_map_display_point_t));
     p->lat = points[0];
     p->lon = points[1];
     location->marker_points = g_list_prepend(location->marker_points, p);

@@ -2968,7 +2968,7 @@ static void collection_updated(gpointer instance,
                                gpointer self)
 {
   dt_lib_module_t *dm = (dt_lib_module_t *)self;
-  dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+  dt_lib_collect_t *d = dm->data;
 
   // update tree
   d->view_rule = -1;
@@ -3011,7 +3011,7 @@ static void filmrolls_imported(gpointer instance,
                                gpointer self)
 {
   dt_lib_module_t *dm = (dt_lib_module_t *)self;
-  dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+  dt_lib_collect_t *d = dm->data;
 
   // update tree
   d->view_rule = -1;
@@ -3031,7 +3031,7 @@ static void filmrolls_removed(gpointer instance,
                               gpointer self)
 {
   dt_lib_module_t *dm = (dt_lib_module_t *)self;
-  dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+  dt_lib_collect_t *d = dm->data;
 
   // update tree
   if(d->view_rule != DT_COLLECTION_PROP_FOLDERS)
@@ -3046,7 +3046,7 @@ static void tag_changed(gpointer instance,
                         gpointer self)
 {
   dt_lib_module_t *dm = (dt_lib_module_t *)self;
-  dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+  dt_lib_collect_t *d = dm->data;
   // update tree
   if(_combo_get_active_collection(d->rule[d->active_rule].combo) == DT_COLLECTION_PROP_TAG)
   {
@@ -3099,7 +3099,7 @@ static void _geotag_changed(gpointer instance,
   if(!locid)
   {
     dt_lib_module_t *dm = (dt_lib_module_t *)self;
-    dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+    dt_lib_collect_t *d = dm->data;
     // update tree
     if(_combo_get_active_collection(d->rule[d->active_rule].combo)
        == DT_COLLECTION_PROP_GEOTAGGING)
@@ -3129,7 +3129,7 @@ static void metadata_changed(gpointer instance,
                              gpointer self)
 {
   dt_lib_module_t *dm = (dt_lib_module_t *)self;
-  dt_lib_collect_t *d = (dt_lib_collect_t *)dm->data;
+  dt_lib_collect_t *d = dm->data;
 
   if(type == DT_METADATA_SIGNAL_HIDDEN
      || type == DT_METADATA_SIGNAL_SHOWN)

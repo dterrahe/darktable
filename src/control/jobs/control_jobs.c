@@ -135,8 +135,7 @@ static int32_t _generic_dt_control_fileop_images_job_run
    const char *desc,
    const char *desc_pl)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
   GList *t = params->index;
   const guint total = g_list_length(t);
   char message[512] = { 0 };
@@ -1376,8 +1375,7 @@ static int32_t dt_control_copy_images_job_run(dt_job_t *job)
 
 static int32_t dt_control_local_copy_images_job_run(dt_job_t *job)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
   GList *t = params->index;
   guint tagid = 0;
   const guint total = g_list_length(t);
@@ -1434,8 +1432,7 @@ static int32_t dt_control_local_copy_images_job_run(dt_job_t *job)
 
 static int32_t dt_control_refresh_exif_run(dt_job_t *job)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
   GList *t = params->index;
   GList *imgs = g_list_copy(t);
   const guint total = g_list_length(t);
@@ -1491,9 +1488,8 @@ static int32_t dt_control_refresh_exif_run(dt_job_t *job)
 
 static int32_t dt_control_export_job_run(dt_job_t *job)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
-  dt_control_export_t *settings = (dt_control_export_t *)params->data;
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
+  dt_control_export_t *settings = params->data;
   GList *t = params->index;
   dt_imageio_module_format_t *mformat =
     dt_imageio_get_format_by_index(settings->format_index);
@@ -1853,8 +1849,7 @@ void dt_control_move_images()
   dt_job_t *job = dt_control_generic_images_job_create
     (&dt_control_move_images_job_run, N_("move images"), 0, dir,
      PROGRESS_CANCELLABLE, FALSE);
-  const dt_control_image_enumerator_t *e =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  const dt_control_image_enumerator_t *e = dt_control_job_get_params(job);
   const int number = g_list_length(e->index);
   if(number == 0)
   {
@@ -1910,8 +1905,7 @@ void dt_control_copy_images()
   dt_job_t *job = dt_control_generic_images_job_create
     (&dt_control_copy_images_job_run, N_("copy images"), 0, dir,
      PROGRESS_CANCELLABLE, FALSE);
-  const dt_control_image_enumerator_t *e =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  const dt_control_image_enumerator_t *e = dt_control_job_get_params(job);
   const int number = g_list_length(e->index);
   if(number == 0)
   {
@@ -2008,7 +2002,7 @@ static void dt_control_export_cleanup(void *p)
 {
   dt_control_image_enumerator_t *params = p;
 
-  dt_control_export_t *settings = (dt_control_export_t *)params->data;
+  dt_control_export_t *settings = params->data;
   dt_imageio_module_storage_t *mstorage =
     dt_imageio_get_storage_by_index(settings->storage_index);
   dt_imageio_module_data_t *sdata = settings->sdata;
@@ -2116,8 +2110,7 @@ static void _add_datetime_offset(const dt_imgid_t imgid,
 
 static int32_t dt_control_datetime_job_run(dt_job_t *job)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
   uint32_t cntr = 0;
   GList *t = params->index;
   const GTimeSpan offset = ((dt_control_datetime_t *)params->data)->offset;
@@ -2472,8 +2465,7 @@ static GList *_apply_lua_filter(GList *images)
 
 static int32_t _control_import_job_run(dt_job_t *job)
 {
-  dt_control_image_enumerator_t *params =
-    (dt_control_image_enumerator_t *)dt_control_job_get_params(job);
+  dt_control_image_enumerator_t *params = dt_control_job_get_params(job);
   dt_control_import_t *data = params->data;
   uint32_t cntr = 0;
   char message[512] = { 0 };
