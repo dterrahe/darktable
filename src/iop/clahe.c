@@ -314,7 +314,8 @@ void cleanup(dt_iop_module_t *module)
 void gui_init(struct dt_iop_module_t *self)
 {
   dt_iop_rlce_gui_data_t *g = IOP_GUI_ALLOC(rlce);
-  dt_iop_rlce_params_t *p = (dt_iop_rlce_params_t *)self->default_params;
+  dt_iop_rlce_params_t *p = (dt_iop_rlce_params_t *)self->params;
+  dt_iop_rlce_params_t *d = (dt_iop_rlce_params_t *)self->default_params;
 
   self->widget = GTK_WIDGET(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
 
@@ -328,8 +329,8 @@ void gui_init(struct dt_iop_module_t *self)
   g->label2 = dtgtk_reset_label_new(_("amount"), self, &p->slope, sizeof(float));
   gtk_box_pack_start(GTK_BOX(g->vbox1), g->label2, TRUE, TRUE, 0);
 
-  g->scale1 = dt_bauhaus_slider_new_with_range(NULL, 0.0, 256.0, 0, p->radius, 0);
-  g->scale2 = dt_bauhaus_slider_new_with_range(NULL, 1.0, 3.0, 0, p->slope, 2);
+  g->scale1 = dt_bauhaus_slider_new_with_range(NULL, 0.0, 256.0, 0, d->radius, 0);
+  g->scale2 = dt_bauhaus_slider_new_with_range(NULL, 1.0, 3.0, 0, d->slope, 2);
   // dtgtk_slider_set_format_type(g->scale2,DARKTABLE_SLIDER_FORMAT_PERCENT);
 
   gtk_box_pack_start(GTK_BOX(g->vbox2), GTK_WIDGET(g->scale1), TRUE, TRUE, 0);
