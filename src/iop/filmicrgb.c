@@ -505,8 +505,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_filmicrgb_params_v1_t;
 
     const dt_iop_filmicrgb_params_v1_t *o = (dt_iop_filmicrgb_params_v1_t *)old_params;
-    dt_iop_filmicrgb_params_v6_t *n =
-      (dt_iop_filmicrgb_params_v6_t *)malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
+    dt_iop_filmicrgb_params_v6_t *n = malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
 
     n->grey_point_source = o->grey_point_source;
     n->white_point_source = o->white_point_source;
@@ -577,8 +576,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_filmicrgb_params_v2_t;
 
     const dt_iop_filmicrgb_params_v2_t *o = (dt_iop_filmicrgb_params_v2_t *)old_params;
-    dt_iop_filmicrgb_params_v6_t *n =
-      (dt_iop_filmicrgb_params_v6_t *)malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
+    dt_iop_filmicrgb_params_v6_t *n = malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
 
     n->grey_point_source = o->grey_point_source;
     n->white_point_source = o->white_point_source;
@@ -658,8 +656,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_filmicrgb_params_v3_t;
 
     const dt_iop_filmicrgb_params_v3_t *o = (dt_iop_filmicrgb_params_v3_t *)old_params;
-    dt_iop_filmicrgb_params_v6_t *n =
-      (dt_iop_filmicrgb_params_v6_t *)malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
+    dt_iop_filmicrgb_params_v6_t *n = malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
 
     n->grey_point_source = o->grey_point_source;
     n->white_point_source = o->white_point_source;
@@ -732,8 +729,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_filmicrgb_params_v4_t;
 
     const dt_iop_filmicrgb_params_v4_t *o = (dt_iop_filmicrgb_params_v4_t *)old_params;
-    dt_iop_filmicrgb_params_v6_t *n =
-      (dt_iop_filmicrgb_params_v6_t *)malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
+    dt_iop_filmicrgb_params_v6_t *n = malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
 
     memcpy(n, o, sizeof(dt_iop_filmicrgb_params_v4_t));
     // structure didn't change except the enum instead of gint for internal_version
@@ -796,8 +792,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_filmicrgb_params_v5_t;
 
     const dt_iop_filmicrgb_params_v5_t *o = (dt_iop_filmicrgb_params_v5_t *)old_params;
-    dt_iop_filmicrgb_params_v6_t *n =
-      (dt_iop_filmicrgb_params_v6_t *)malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
+    dt_iop_filmicrgb_params_v6_t *n = malloc(sizeof(dt_iop_filmicrgb_params_v6_t));
 
     // Copy over the old parameters
     n->grey_point_source = o->grey_point_source;
@@ -2080,7 +2075,7 @@ void tiling_callback(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_iop_t
 {
   const int scales = get_scales(roi_in, piece);
   const int max_filter_radius = (1 << scales);
-  const dt_iop_filmicrgb_data_t *const data = (dt_iop_filmicrgb_data_t *)piece->data;
+  const dt_iop_filmicrgb_data_t *const data = piece->data;
   const gboolean run_fast = !data->enable_highlight_reconstruction || piece->pipe->type & DT_DEV_PIXELPIPE_FAST;
 
   // without reconstruction: in + out + 1ch_mask
@@ -2110,7 +2105,7 @@ void process(dt_iop_module_t *self,
                                         ivoid, ovoid, roi_in, roi_out))
     return;
 
-  const dt_iop_filmicrgb_data_t *const data = (dt_iop_filmicrgb_data_t *)piece->data;
+  const dt_iop_filmicrgb_data_t *const data = piece->data;
   const dt_iop_order_iccprofile_info_t *const work_profile = dt_ioppr_get_pipe_work_profile_info(piece->pipe);
   const dt_iop_order_iccprofile_info_t *const export_profile = dt_ioppr_get_pipe_output_profile_info(piece->pipe);
 
@@ -2137,7 +2132,7 @@ void process(dt_iop_module_t *self,
   // display mask and exit
   if(self->dev->gui_attached && (piece->pipe->type & DT_DEV_PIXELPIPE_FULL) && mask)
   {
-    dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+    dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
     if(g->show_mask)
     {
@@ -2377,8 +2372,8 @@ int process_cl(struct dt_iop_module_t *self,
                const dt_iop_roi_t *const roi_in,
                const dt_iop_roi_t *const roi_out)
 {
-  const dt_iop_filmicrgb_data_t *const d = (dt_iop_filmicrgb_data_t *)piece->data;
-  dt_iop_filmicrgb_global_data_t *const gd = (dt_iop_filmicrgb_global_data_t *)self->global_data;
+  const dt_iop_filmicrgb_data_t *const d = piece->data;
+  dt_iop_filmicrgb_global_data_t *const gd = self->global_data;
 
   cl_int err = DT_OPENCL_DEFAULT_ERROR;
 
@@ -2472,7 +2467,7 @@ int process_cl(struct dt_iop_module_t *self,
   // display mask and exit
   if(self->dev->gui_attached && (piece->pipe->type & DT_DEV_PIXELPIPE_FULL))
   {
-    dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+    dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
     if(g->show_mask)
     {
@@ -2595,8 +2590,8 @@ error:
 static void apply_auto_grey(dt_iop_module_t *self)
 {
   if(darktable.gui->reset) return;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   const dt_iop_order_iccprofile_info_t *const work_profile
       = dt_ioppr_get_iop_work_profile_info(self, self->dev->iop);
@@ -2624,8 +2619,8 @@ static void apply_auto_grey(dt_iop_module_t *self)
 static void apply_auto_black(dt_iop_module_t *self)
 {
   if(darktable.gui->reset) return;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   // Black
   const dt_iop_order_iccprofile_info_t *const work_profile
@@ -2652,8 +2647,8 @@ static void apply_auto_black(dt_iop_module_t *self)
 static void apply_auto_white_point_source(dt_iop_module_t *self)
 {
   if(darktable.gui->reset) return;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   // White
   const dt_iop_order_iccprofile_info_t *const work_profile
@@ -2678,8 +2673,8 @@ static void apply_auto_white_point_source(dt_iop_module_t *self)
 
 static void apply_autotune(dt_iop_module_t *self)
 {
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
   const dt_iop_order_iccprofile_info_t *const work_profile
       = dt_ioppr_get_iop_work_profile_info(self, self->dev->iop);
 
@@ -2719,7 +2714,7 @@ static void apply_autotune(dt_iop_module_t *self)
 void color_picker_apply(dt_iop_module_t *self, GtkWidget *picker,
                         dt_dev_pixelpipe_t *pipe)
 {
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   if(picker == g->grey_point_source)
     apply_auto_grey(self);
@@ -2731,11 +2726,10 @@ void color_picker_apply(dt_iop_module_t *self, GtkWidget *picker,
     apply_autotune(self);
 }
 
-static void show_mask_callback(GtkToggleButton *button, GdkEventButton *event, gpointer user_data)
+static void show_mask_callback(GtkToggleButton *button, GdkEventButton *event, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(darktable.gui->reset) return;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
   ++darktable.gui->reset;
   g->show_mask = !(g->show_mask);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->show_highlight_mask), g->show_mask);
@@ -3051,7 +3045,7 @@ void commit_params(dt_iop_module_t *self, dt_iop_params_t *p1, dt_dev_pixelpipe_
                    dt_dev_pixelpipe_iop_t *piece)
 {
   dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)p1;
-  dt_iop_filmicrgb_data_t *d = (dt_iop_filmicrgb_data_t *)piece->data;
+  dt_iop_filmicrgb_data_t *d = piece->data;
 
   // source and display greys
   float grey_source = 0.1845f, grey_display = 0.4638f;
@@ -3123,7 +3117,7 @@ void commit_params(dt_iop_module_t *self, dt_iop_params_t *p1, dt_dev_pixelpipe_
 
 void gui_focus(struct dt_iop_module_t *self, gboolean in)
 {
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   if(!in)
   {
@@ -3148,8 +3142,8 @@ void cleanup_pipe(dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, dt_dev_pixelp
 
 void gui_update(dt_iop_module_t *self)
 {
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
 
   dt_iop_color_picker_reset(self, TRUE);
 
@@ -3245,7 +3239,7 @@ void init_global(dt_iop_module_so_t *module)
 
 void cleanup_global(dt_iop_module_so_t *module)
 {
-  dt_iop_filmicrgb_global_data_t *gd = (dt_iop_filmicrgb_global_data_t *)module->data;
+  dt_iop_filmicrgb_global_data_t *gd = module->data;
   dt_opencl_free_kernel(gd->kernel_filmic_rgb_split);
   dt_opencl_free_kernel(gd->kernel_filmic_rgb_chroma);
   dt_opencl_free_kernel(gd->kernel_filmic_mask);
@@ -3337,11 +3331,10 @@ void filmic_gui_draw_icon(cairo_t *cr, struct dt_iop_filmicrgb_gui_button_data_t
 }
 
 
-static gboolean dt_iop_tonecurve_draw(GtkWidget *widget, cairo_t *crf, gpointer user_data)
+static gboolean dt_iop_tonecurve_draw(GtkWidget *widget, cairo_t *crf, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
   gboolean contrast_clamped = dt_iop_filmic_rgb_compute_spline(p, &g->spline);
 
   // Cache the graph objects to avoid recomputing all the view at each redraw
@@ -4187,19 +4180,22 @@ static gboolean dt_iop_tonecurve_draw(GtkWidget *widget, cairo_t *crf, gpointer 
   return FALSE;
 }
 
-static gboolean area_button_press(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
+static void _filmicrgb_button_press(GtkGestureSingle *gesture,
+                                    int n_press,
+                                    double x,
+                                    double y,
+                                    dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  if(darktable.gui->reset) return TRUE;
+  if(darktable.gui->reset) return;
 
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   dt_iop_request_focus(self);
 
   if(g->active_button != DT_FILMIC_GUI_BUTTON_LAST)
   {
-
-    if(event->button == 1 && event->type == GDK_2BUTTON_PRESS)
+    guint button = gtk_gesture_single_get_current_button(gesture);
+    if(button == 1 && n_press == 2)
     {
       // double click resets view
       if(g->active_button == DT_FILMIC_GUI_BUTTON_TYPE)
@@ -4207,14 +4203,9 @@ static gboolean area_button_press(GtkWidget *widget, GdkEventButton *event, gpoi
         g->gui_mode = DT_FILMIC_GUI_LOOK;
         gtk_widget_queue_draw(GTK_WIDGET(g->area));
         dt_conf_set_int("plugins/darkroom/filmicrgb/graph_view", g->gui_mode);
-        return TRUE;
-      }
-      else
-      {
-        return FALSE;
       }
     }
-    else if(event->button == 1)
+    else if(button == 1)
     {
       // simple left click cycles through modes in positive direction
       if(g->active_button == DT_FILMIC_GUI_BUTTON_TYPE)
@@ -4227,24 +4218,17 @@ static gboolean area_button_press(GtkWidget *widget, GdkEventButton *event, gpoi
 
         gtk_widget_queue_draw(GTK_WIDGET(g->area));
         dt_conf_set_int("plugins/darkroom/filmicrgb/graph_view", g->gui_mode);
-        return TRUE;
       }
       else if(g->active_button == DT_FILMIC_GUI_BUTTON_LABELS)
       {
         g->gui_show_labels = !g->gui_show_labels;
         gtk_widget_queue_draw(GTK_WIDGET(g->area));
         dt_conf_set_int("plugins/darkroom/filmicrgb/graph_show_labels", g->gui_show_labels);
-        return TRUE;
-      }
-      else
-      {
-        // we should never get there since (g->active_button != DT_FILMIC_GUI_BUTTON_LAST)
-        // and any other case has been processed above.
-        return FALSE;
       }
     }
-    else if(event->button == 3)
+    else if(button == 3)
     {
+      dt_gui_claim(gesture);
       // simple right click cycles through modes in negative direction
       if(g->active_button == DT_FILMIC_GUI_BUTTON_TYPE)
       {
@@ -4255,45 +4239,44 @@ static gboolean area_button_press(GtkWidget *widget, GdkEventButton *event, gpoi
 
         gtk_widget_queue_draw(GTK_WIDGET(g->area));
         dt_conf_set_int("plugins/darkroom/filmicrgb/graph_view", g->gui_mode);
-        return TRUE;
       }
       else if(g->active_button == DT_FILMIC_GUI_BUTTON_LABELS)
       {
         g->gui_show_labels = !g->gui_show_labels;
         gtk_widget_queue_draw(GTK_WIDGET(g->area));
         dt_conf_set_int("plugins/darkroom/filmicrgb/graph_show_labels", g->gui_show_labels);
-        return TRUE;
-      }
-      else
-      {
-        return FALSE;
       }
     }
   }
-
-  return FALSE;
 }
 
-static gboolean area_enter_leave_notify(GtkWidget *widget, GdkEventCrossing *event, dt_iop_module_t *self)
+static void _filmicrgb_leave(GtkEventControllerMotion *controller,
+                             dt_iop_module_t *self)
 {
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
-  g->gui_hover = event->type == GDK_ENTER_NOTIFY;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
+  g->gui_hover = controller == NULL;
   gtk_widget_queue_draw(GTK_WIDGET(g->area));
-  return FALSE;
 }
 
-static gboolean area_motion_notify(GtkWidget *widget, GdkEventMotion *event, gpointer user_data)
+static void _filmicrgb_enter(GtkEventControllerMotion *controller,
+                             double x,
+                             double y,
+                             dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  if(darktable.gui->reset) return 1;
+  _filmicrgb_leave(NULL, self);
+}
 
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
-  if(!g->gui_sizes_inited) return FALSE;
+static void _filmicrgb_motion(GtkEventControllerMotion *controller,
+                              double x,
+                              double y,
+                              dt_iop_module_t *self)
+{
+  if(darktable.gui->reset) return;
+
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
+  if(!g->gui_sizes_inited) return;
 
   // get in-widget coordinates
-  const float y = event->y;
-  const float x = event->x;
-
   if(x > 0. && x < g->allocation.width && y > 0. && y < g->allocation.height) g->gui_hover = TRUE;
 
   gint save_active_button = g->active_button;
@@ -4346,13 +4329,11 @@ static gboolean area_motion_notify(GtkWidget *widget, GdkEventMotion *event, gpo
     }
 
     if(save_active_button != g->active_button) gtk_widget_queue_draw(GTK_WIDGET(g->area));
-    return TRUE;
   }
   else
   {
     g->active_button = DT_FILMIC_GUI_BUTTON_LAST;
     if(save_active_button != g->active_button) (GTK_WIDGET(g->area));
-    return FALSE;
   }
 }
 
@@ -4374,10 +4355,8 @@ void gui_init(dt_iop_module_t *self)
 
   gtk_widget_set_can_focus(GTK_WIDGET(g->area), TRUE);
   g_signal_connect(G_OBJECT(g->area), "draw", G_CALLBACK(dt_iop_tonecurve_draw), self);
-  g_signal_connect(G_OBJECT(g->area), "button-press-event", G_CALLBACK(area_button_press), self);
-  g_signal_connect(G_OBJECT(g->area), "leave-notify-event", G_CALLBACK(area_enter_leave_notify), self);
-  g_signal_connect(G_OBJECT(g->area), "enter-notify-event", G_CALLBACK(area_enter_leave_notify), self);
-  g_signal_connect(G_OBJECT(g->area), "motion-notify-event", G_CALLBACK(area_motion_notify), self);
+  dt_gui_connect_click_all(g->area, _filmicrgb_button_press, NULL, self);
+  dt_gui_connect_motion(g->area, _filmicrgb_motion, _filmicrgb_enter, _filmicrgb_leave, self);
 
   // Init GTK notebook
   static struct dt_action_def_t notebook_def = { };
@@ -4643,8 +4622,8 @@ void gui_init(dt_iop_module_t *self)
 
 void gui_changed(dt_iop_module_t *self, GtkWidget *w, void *previous)
 {
-  dt_iop_filmicrgb_params_t *p = (dt_iop_filmicrgb_params_t *)self->params;
-  dt_iop_filmicrgb_gui_data_t *g = (dt_iop_filmicrgb_gui_data_t *)self->gui_data;
+  dt_iop_filmicrgb_params_t *p = self->params;
+  dt_iop_filmicrgb_gui_data_t *g = self->gui_data;
 
   if(!w || w == g->auto_hardness || w == g->security_factor || w == g->grey_point_source
      || w == g->black_point_source || w == g->white_point_source)

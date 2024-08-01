@@ -201,8 +201,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_watermark_params_v1_t;
 
     const dt_iop_watermark_params_v1_t *o = (dt_iop_watermark_params_v1_t *)old_params;
-    dt_iop_watermark_params_v6_t *n =
-      (dt_iop_watermark_params_v6_t *)
+    dt_iop_watermark_params_v6_t *n = 
       malloc(sizeof(dt_iop_watermark_params_v6_t));
 
     n->opacity = o->opacity;
@@ -241,8 +240,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_watermark_params_v2_t;
 
     const dt_iop_watermark_params_v2_t *o = (dt_iop_watermark_params_v2_t *)old_params;
-    dt_iop_watermark_params_v6_t *n =
-      (dt_iop_watermark_params_v6_t *)
+    dt_iop_watermark_params_v6_t *n = 
       malloc(sizeof(dt_iop_watermark_params_v6_t));
 
     n->opacity = o->opacity;
@@ -283,8 +281,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_watermark_params_v3_t;
 
     const dt_iop_watermark_params_v3_t *o = (dt_iop_watermark_params_v3_t *)old_params;
-    dt_iop_watermark_params_v6_t *n =
-      (dt_iop_watermark_params_v6_t *)
+    dt_iop_watermark_params_v6_t *n = 
       malloc(sizeof(dt_iop_watermark_params_v6_t));
 
     n->opacity = o->opacity;
@@ -332,8 +329,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_watermark_params_v4_t;
 
     const dt_iop_watermark_params_v4_t *o = (dt_iop_watermark_params_v4_t *)old_params;
-    dt_iop_watermark_params_v6_t *n =
-      (dt_iop_watermark_params_v6_t *)
+    dt_iop_watermark_params_v6_t *n = 
       malloc(sizeof(dt_iop_watermark_params_v6_t));
 
     n->opacity = o->opacity;
@@ -383,8 +379,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_watermark_params_v5_t;
 
     const dt_iop_watermark_params_v5_t *o = (dt_iop_watermark_params_v5_t *)old_params;
-    dt_iop_watermark_params_v6_t *n =
-      (dt_iop_watermark_params_v6_t *)
+    dt_iop_watermark_params_v6_t *n = 
       malloc(sizeof(dt_iop_watermark_params_v6_t));
 
     n->opacity = o->opacity;
@@ -575,7 +570,7 @@ static gchar *_watermark_get_svgdoc(dt_iop_module_t *self, dt_iop_watermark_data
 void process(struct dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const ivoid,
              void *const ovoid, const dt_iop_roi_t *const roi_in, const dt_iop_roi_t *const roi_out)
 {
-  dt_iop_watermark_data_t *data = (dt_iop_watermark_data_t *)piece->data;
+  dt_iop_watermark_data_t *data = piece->data;
   float *in = (float *)ivoid;
   float *out = (float *)ovoid;
   const int ch = piece->colors;
@@ -1001,13 +996,12 @@ void process(struct dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const 
 
 }
 
-static void _watermark_callback(GtkWidget *tb, gpointer user_data)
+static void _watermark_callback(GtkWidget *tb, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
 
   if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
   memset(p->filename, 0, sizeof(p->filename));
   int n = dt_bauhaus_combobox_get(g->watermarks);
   g_strlcpy(p->filename, (char *)g_list_nth_data(g->watermarks_filenames, n), sizeof(p->filename));
@@ -1018,8 +1012,8 @@ static void _watermark_callback(GtkWidget *tb, gpointer user_data)
 void color_picker_apply(dt_iop_module_t *self, GtkWidget *picker,
                         dt_dev_pixelpipe_t *pipe)
 {
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
+  dt_iop_watermark_params_t *p = self->params;
 
   if(fabsf(p->color[0] - self->picked_color[0]) < 0.0001f
      && fabsf(p->color[1] - self->picked_color[1]) < 0.0001f
@@ -1083,8 +1077,8 @@ static void _load_watermarks(const char *basedir, dt_iop_watermark_gui_data_t *g
 
 static void _refresh_watermarks(dt_iop_module_t *self)
 {
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
+  dt_iop_watermark_params_t *p = self->params;
 
   g_signal_handlers_block_by_func(g->watermarks, _watermark_callback, self);
 
@@ -1107,26 +1101,24 @@ static void _refresh_watermarks(dt_iop_module_t *self)
   g_signal_handlers_unblock_by_func(g->watermarks, _watermark_callback, self);
 }
 
-static void _refresh_callback(GtkWidget *tb, gpointer user_data)
+static void _refresh_callback(GtkWidget *tb, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   _refresh_watermarks(self);
 }
 
-static void _alignment_callback(GtkWidget *tb, gpointer user_data)
+static void _alignment_callback(GtkWidget *tb, dt_iop_module_t *self)
 {
   int index = -1;
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
 
   if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
 
 
   for(int i = 0; i < 9; i++)
   {
     /* block signal handler */
-    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, user_data);
+    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, self);
 
     if(GTK_WIDGET(g->align[i]) == tb)
     {
@@ -1137,53 +1129,25 @@ static void _alignment_callback(GtkWidget *tb, gpointer user_data)
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), FALSE);
 
     /* unblock signal handler */
-    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, user_data);
+    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, self);
   }
   p->alignment = index;
   dt_dev_add_history_item(darktable.develop, self, TRUE);
 }
 
-static void _reset_alignment_callback(GtkDarktableResetLabel *label, gpointer user_data)
+static void _text_callback(GtkWidget *entry, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
-
   if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
-  dt_iop_watermark_params_t *dp = (dt_iop_watermark_params_t *)self->default_params;
-
-  for(int i = 0; i < 9; i++)
-  {
-    /* block signal handler */
-    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, user_data);
-
-    if(i == dp->alignment)
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), TRUE);
-    else
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), FALSE);
-
-    /* unblock signal handler */
-    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, user_data);
-  }
-  p->alignment = dp->alignment;
-  dt_dev_add_history_item(darktable.develop, self, TRUE);
-}
-
-static void _text_callback(GtkWidget *entry, gpointer user_data)
-{
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
   g_strlcpy(p->text, gtk_entry_get_text(GTK_ENTRY(entry)), sizeof(p->text));
   dt_conf_set_string("plugins/darkroom/watermark/text", p->text);
   dt_dev_add_history_item(darktable.develop, self, TRUE);
 }
 
-static void _colorpick_color_set(GtkColorButton *widget, gpointer user_data)
+static void _colorpick_color_set(GtkColorButton *widget, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
 
   GdkRGBA c;
   gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &c);
@@ -1197,11 +1161,10 @@ static void _colorpick_color_set(GtkColorButton *widget, gpointer user_data)
   dt_dev_add_history_item(darktable.develop, self, TRUE);
 }
 
-static void _fontsel_callback(GtkWidget *button, gpointer user_data)
+static void _fontsel_callback(GtkWidget *button, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(darktable.gui->reset) return;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
 
   gchar *fontname = gtk_font_chooser_get_font(GTK_FONT_CHOOSER(button));
   g_strlcpy(p->font, fontname, sizeof(p->font));
@@ -1214,7 +1177,7 @@ void commit_params(struct dt_iop_module_t *self, dt_iop_params_t *p1, dt_dev_pix
                    dt_dev_pixelpipe_iop_t *piece)
 {
   dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)p1;
-  dt_iop_watermark_data_t *d = (dt_iop_watermark_data_t *)piece->data;
+  dt_iop_watermark_data_t *d = piece->data;
 
   d->opacity = p->opacity;
   d->scale = p->scale;
@@ -1251,8 +1214,8 @@ void cleanup_pipe(struct dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, dt_dev
 
 void gui_update(struct dt_iop_module_t *self)
 {
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
+  dt_iop_watermark_params_t *p = self->params;
   for(int i = 0; i < 9; i++)
   {
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), FALSE);
@@ -1280,8 +1243,8 @@ void gui_changed(dt_iop_module_t *self,
                  GtkWidget *w,
                  void *previous)
 {
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
+  dt_iop_watermark_params_t *p = self->params;
 
   if(w == g->scale_base)
   {
@@ -1311,7 +1274,7 @@ void init(dt_iop_module_t *module)
 void gui_init(struct dt_iop_module_t *self)
 {
   dt_iop_watermark_gui_data_t *g = IOP_GUI_ALLOC(watermark);
-  dt_iop_watermark_params_t *p = (dt_iop_watermark_params_t *)self->params;
+  dt_iop_watermark_params_t *p = self->params;
 
   self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, DT_BAUHAUS_SPACE);
 
@@ -1326,7 +1289,7 @@ void gui_init(struct dt_iop_module_t *self)
   dt_loc_get_datadir(datadir, sizeof(datadir));
   dt_loc_get_user_config_dir(configdir, sizeof(configdir));
 
-  GtkWidget *label = dtgtk_reset_label_new(_("marker"), self, &p->filename, sizeof(p->filename), NULL);
+  GtkWidget *label = dtgtk_reset_label_new(_("marker"), self, &p->filename, sizeof(p->filename));
   g->watermarks = dt_bauhaus_combobox_new(self);
   gtk_widget_set_hexpand(GTK_WIDGET(g->watermarks), TRUE);
   char *tooltip = g_strdup_printf(_("SVG watermarks in %s/watermarks or %s/watermarks"), configdir, datadir);
@@ -1348,7 +1311,7 @@ void gui_init(struct dt_iop_module_t *self)
   gtk_grid_attach_next_to(grid, g->text, label, GTK_POS_RIGHT, 2, 1);
 
   // Text font
-  label = dtgtk_reset_label_new(_("font"), self, &p->font, sizeof(p->font), NULL);
+  label = dtgtk_reset_label_new(_("font"), self, &p->font, sizeof(p->font));
   const char *str = dt_conf_get_string_const("plugins/darkroom/watermark/font");
   g->fontsel = gtk_font_button_new_with_font(str==NULL?"DejaVu Sans 10":str);
   GtkWidget *child = dt_gui_container_first_child(GTK_CONTAINER(gtk_bin_get_child(GTK_BIN(g->fontsel))));
@@ -1366,7 +1329,7 @@ void gui_init(struct dt_iop_module_t *self)
   float blue = dt_conf_get_float("plugins/darkroom/watermark/color_blue");
   GdkRGBA color = (GdkRGBA){.red = red, .green = green, .blue = blue, .alpha = 1.0 };
 
-  label = dtgtk_reset_label_new(_("color"), self, &p->color, 3 * sizeof(float), NULL);
+  label = dtgtk_reset_label_new(_("color"), self, &p->color, 3 * sizeof(float));
   g->colorpick = gtk_color_button_new_with_rgba(&color);
   gtk_widget_set_tooltip_text(g->colorpick, _("watermark color, tag:\n$(WATERMARK_COLOR)"));
   gtk_color_chooser_set_use_alpha(GTK_COLOR_CHOOSER(g->colorpick), FALSE);
@@ -1415,7 +1378,7 @@ void gui_init(struct dt_iop_module_t *self)
 
   // Create the 3x3 gtk table toggle button table...
   GtkWidget *bat = gtk_grid_new();
-  label = dtgtk_reset_label_new(_("alignment"), self, &p->alignment, sizeof(p->alignment), G_CALLBACK(_reset_alignment_callback));
+  label = dtgtk_reset_label_new(_("alignment"), self, &p->alignment, sizeof(p->alignment));
   gtk_grid_attach(GTK_GRID(bat), label, 0, 0, 1, 3);
   gtk_widget_set_hexpand(label, TRUE);
   gtk_grid_set_row_spacing(GTK_GRID(bat), DT_PIXEL_APPLY_DPI(3));
@@ -1450,7 +1413,7 @@ void gui_init(struct dt_iop_module_t *self)
 
 void gui_cleanup(struct dt_iop_module_t *self)
 {
-  dt_iop_watermark_gui_data_t *g = (dt_iop_watermark_gui_data_t *)self->gui_data;
+  dt_iop_watermark_gui_data_t *g = self->gui_data;
   g_list_free_full(g->watermarks_filenames, g_free);
   g->watermarks_filenames = NULL;
 

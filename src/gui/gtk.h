@@ -524,6 +524,30 @@ void dt_gui_hide_collapsible_section(dt_gui_collapsible_section_t *cs);
 gboolean dt_gui_long_click(const int second,
                            const int first);
 
+GtkGestureSingle *(dt_gui_connect_click)(GtkWidget *widget,
+                                         GCallback pressed,
+                                         GCallback released,
+                                         gpointer data);
+#define dt_gui_connect_click(widget, pressed, released, data) \
+  dt_gui_connect_click(GTK_WIDGET(widget), G_CALLBACK(pressed), G_CALLBACK(released), (data))
+#define dt_gui_connect_click_all(widget, pressed, released, data) \
+  gtk_gesture_single_set_button(dt_gui_connect_click(widget, pressed, released, data), 0)
+
+#define dt_gui_claim(gesture) \
+      gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED)
+
+GtkEventController *(dt_gui_connect_motion)(GtkWidget *widget,
+                                            GCallback motion,
+                                            GCallback enter,
+                                            GCallback leave,
+                                            gpointer data);
+#define dt_gui_connect_motion(widget, motion, enter, leave, data) \
+  dt_gui_connect_motion(GTK_WIDGET(widget), G_CALLBACK(motion), G_CALLBACK(enter), G_CALLBACK(leave), (data))
+
+// in gtk4 use gtk_event_controller_get_current_event_state(GTK_EVENT_CONTROLLER(controller));
+#define dt_modifier_eq(controller, mask)\
+  dt_modifier_is(dt_key_modifier_state(), mask)
+
 #ifdef __cplusplus
 } // extern "C"
 #endif /* __cplusplus */

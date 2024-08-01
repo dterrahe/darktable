@@ -190,8 +190,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_exposure_params_v2_t;
 
     const dt_iop_exposure_params_v2_t *o = (dt_iop_exposure_params_v2_t *)old_params;
-    dt_iop_exposure_params_v6_t *n =
-      (dt_iop_exposure_params_v6_t *)malloc(sizeof(dt_iop_exposure_params_v6_t));
+    dt_iop_exposure_params_v6_t *n = malloc(sizeof(dt_iop_exposure_params_v6_t));
 
     n->mode = EXPOSURE_MODE_MANUAL;
     n->black = o->black;
@@ -215,8 +214,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_exposure_params_v3_t;
 
     const dt_iop_exposure_params_v3_t *o = (dt_iop_exposure_params_v3_t *)old_params;
-    dt_iop_exposure_params_v6_t *n =
-      (dt_iop_exposure_params_v6_t *)malloc(sizeof(dt_iop_exposure_params_v6_t));
+    dt_iop_exposure_params_v6_t *n = malloc(sizeof(dt_iop_exposure_params_v6_t));
 
     n->mode = o->deflicker ? EXPOSURE_MODE_DEFLICKER : EXPOSURE_MODE_MANUAL;
     n->black = o->black;
@@ -247,8 +245,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_exposure_params_v4_t;
 
     const dt_iop_exposure_params_v4_t *o = (dt_iop_exposure_params_v4_t *)old_params;
-    dt_iop_exposure_params_v6_t *n =
-      (dt_iop_exposure_params_v6_t *)malloc(sizeof(dt_iop_exposure_params_v6_t));
+    dt_iop_exposure_params_v6_t *n = malloc(sizeof(dt_iop_exposure_params_v6_t));
 
     n->mode = o->mode;
     n->black = o->black;
@@ -275,8 +272,7 @@ int legacy_params(dt_iop_module_t *self,
     } dt_iop_exposure_params_v5_t;
 
     const dt_iop_exposure_params_v5_t *o = (dt_iop_exposure_params_v5_t *)old_params;
-    dt_iop_exposure_params_v6_t *n =
-      (dt_iop_exposure_params_v6_t *)malloc(sizeof(dt_iop_exposure_params_v6_t));
+    dt_iop_exposure_params_v6_t *n = malloc(sizeof(dt_iop_exposure_params_v6_t));
 
     n->mode = o->mode;
     n->black = o->black;
@@ -501,8 +497,8 @@ int process_cl(struct dt_iop_module_t *self,
                const dt_iop_roi_t *const roi_in,
                const dt_iop_roi_t *const roi_out)
 {
-  dt_iop_exposure_data_t *d = (dt_iop_exposure_data_t *)piece->data;
-  dt_iop_exposure_global_data_t *gd = (dt_iop_exposure_global_data_t *)self->global_data;
+  dt_iop_exposure_data_t *d = piece->data;
+  dt_iop_exposure_global_data_t *gd = self->global_data;
 
   _process_common_setup(self, piece);
 
@@ -574,7 +570,7 @@ void commit_params(struct dt_iop_module_t *self,
                    dt_dev_pixelpipe_iop_t *piece)
 {
   dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)p1;
-  dt_iop_exposure_data_t *d = (dt_iop_exposure_data_t *)piece->data;
+  dt_iop_exposure_data_t *d = piece->data;
 
   d->params.black = p->black;
   d->params.exposure = p->exposure;
@@ -619,8 +615,8 @@ static void _autoexp_disable(dt_iop_module_t *self)
 
 void gui_update(struct dt_iop_module_t *self)
 {
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
+  dt_iop_exposure_params_t *p = self->params;
 
   if(!dt_image_is_raw(&self->dev->image_storage)
      || self->dev->image_storage.buf_dsc.channels != 1
@@ -699,7 +695,7 @@ void init_global(dt_iop_module_so_t *module)
 
 void cleanup_global(dt_iop_module_so_t *module)
 {
-  dt_iop_exposure_global_data_t *gd = (dt_iop_exposure_global_data_t *)module->data;
+  dt_iop_exposure_global_data_t *gd = module->data;
   dt_opencl_free_kernel(gd->kernel_exposure);
   free(module->data);
   module->data = NULL;
@@ -708,7 +704,7 @@ void cleanup_global(dt_iop_module_so_t *module)
 static void _exposure_set_white(struct dt_iop_module_t *self,
                                 const float white)
 {
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_params_t *p = self->params;
 
   const float exposure = white2exposure(white);
   if(p->exposure == exposure) return;
@@ -716,7 +712,7 @@ static void _exposure_set_white(struct dt_iop_module_t *self,
   p->exposure = exposure;
   if(p->black >= white) _exposure_set_black(self, white - 0.01);
 
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   ++darktable.gui->reset;
   dt_bauhaus_slider_set(g->exposure, p->exposure);
@@ -727,11 +723,11 @@ static void _exposure_set_white(struct dt_iop_module_t *self,
 static void _exposure_proxy_set_exposure(struct dt_iop_module_t *self,
                                          const float exposure)
 {
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_params_t *p = self->params;
 
   if(p->mode == EXPOSURE_MODE_DEFLICKER)
   {
-    dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+    dt_iop_exposure_gui_data_t *g = self->gui_data;
 
     p->deflicker_target_level = exposure;
 
@@ -751,7 +747,7 @@ static void _exposure_proxy_set_exposure(struct dt_iop_module_t *self,
 
 static float _exposure_proxy_get_exposure(struct dt_iop_module_t *self)
 {
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_params_t *p = self->params;
 
   if(p->mode == EXPOSURE_MODE_DEFLICKER)
   {
@@ -766,7 +762,7 @@ static float _exposure_proxy_get_exposure(struct dt_iop_module_t *self)
 static void _exposure_set_black(struct dt_iop_module_t *self,
                                 const float black)
 {
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_params_t *p = self->params;
 
   if(p->black == black) return;
 
@@ -776,7 +772,7 @@ static void _exposure_set_black(struct dt_iop_module_t *self,
     _exposure_set_white(self, p->black + 0.01);
   }
 
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
   ++darktable.gui->reset;
   dt_bauhaus_slider_set(g->black, p->black);
   --darktable.gui->reset;
@@ -792,14 +788,14 @@ static void _exposure_proxy_set_black(struct dt_iop_module_t *self,
 
 static float _exposure_proxy_get_black(struct dt_iop_module_t *self)
 {
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_params_t *p = self->params;
   return p->black;
 }
 
 static void _auto_set_exposure(dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe)
 {
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
+  dt_iop_exposure_params_t *p = self->params;
 
   // capture gui color picked event.
   if(self->picked_color_max[0] < self->picked_color_min[0]) return;
@@ -902,8 +898,8 @@ void gui_changed(dt_iop_module_t *self,
                  GtkWidget *w,
                  void *previous)
 {
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
-  dt_iop_exposure_params_t *p = (dt_iop_exposure_params_t *)self->params;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
+  dt_iop_exposure_params_t *p = self->params;
 
   if(w == g->mode)
   {
@@ -951,7 +947,7 @@ void gui_changed(dt_iop_module_t *self,
 static gboolean _show_computed(gpointer user_data)
 {
   dt_iop_module_t *self = user_data;
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   dt_iop_gui_enter_critical_section(self);
   if(g->deflicker_computed_exposure != EXPOSURE_CORRECTION_UNDEFINED)
@@ -969,10 +965,9 @@ static gboolean _show_computed(gpointer user_data)
 
 static gboolean _target_color_draw(GtkWidget *widget,
                                    cairo_t *crf,
-                                   gpointer user_data)
+                                   dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   // Init
   GtkAllocation allocation;
@@ -1015,10 +1010,9 @@ static gboolean _target_color_draw(GtkWidget *widget,
 
 static gboolean _origin_color_draw(GtkWidget *widget,
                                    cairo_t *crf,
-                                   gpointer user_data)
+                                   dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   // Init
   GtkAllocation allocation;
@@ -1050,7 +1044,7 @@ static gboolean _origin_color_draw(GtkWidget *widget,
 static void _paint_hue(dt_iop_module_t *self)
 {
   // update the fill background color of LCh sliders
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   const float lightness_min = dt_bauhaus_slider_get_hard_min(g->lightness_spot);
   const float lightness_max = dt_bauhaus_slider_get_hard_max(g->lightness_spot);
@@ -1083,7 +1077,7 @@ static void _spot_settings_changed_callback(GtkWidget *slider,
 {
   if(darktable.gui->reset) return;
 
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   dt_aligned_pixel_t Lch_target = { 0.f };
 
@@ -1273,7 +1267,7 @@ void gui_init(struct dt_iop_module_t *self)
 
 void gui_cleanup(struct dt_iop_module_t *self)
 {
-  dt_iop_exposure_gui_data_t *g = (dt_iop_exposure_gui_data_t *)self->gui_data;
+  dt_iop_exposure_gui_data_t *g = self->gui_data;
 
   if(darktable.develop->proxy.exposure.module == self)
     darktable.develop->proxy.exposure.module = NULL;

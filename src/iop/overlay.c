@@ -202,7 +202,7 @@ static GList *_get_disabled_modules(const dt_iop_module_t *self,
 
   for(GList *l = dev->iop; l; l = g_list_next(l))
   {
-    dt_iop_module_t *mod = (dt_iop_module_t *)(l->data);
+    dt_iop_module_t *mod = l->data;
     if((after
           && !dt_iop_module_is(mod->so, "gamma")
           && !dt_iop_module_is(mod->so, "finalscale")
@@ -242,7 +242,7 @@ static GList *_get_disabled_modules(const dt_iop_module_t *self,
 
 static void _clear_cache_entry(dt_iop_module_t *self, const int index)
 {
-  dt_iop_overlay_global_data_t *gd = (dt_iop_overlay_global_data_t *)self->global_data;
+  dt_iop_overlay_global_data_t *gd = self->global_data;
   if(!gd) return;
 
   dt_free_align(gd->cache[index]);
@@ -250,10 +250,9 @@ static void _clear_cache_entry(dt_iop_module_t *self, const int index)
 }
 
 static void _module_remove_callback(gpointer instance,
-                                    dt_iop_module_t *self,
-                                    gpointer user_data)
+                                    dt_iop_module_t *self)
 {
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_params_t *p = self->params;
 
   if(dt_is_valid_imgid(p->imgid))
     dt_overlay_remove(self->dev->image_storage.id, p->imgid);
@@ -265,9 +264,9 @@ static void _setup_overlay(dt_iop_module_t *self,
                            size_t *pwidth,
                            size_t *pheight)
 {
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_data_t *data = (dt_iop_overlay_data_t *)piece->data;
+  dt_iop_overlay_params_t *p = self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_data_t *data = piece->data;
 
   const dt_imgid_t imgid = data->imgid;
 
@@ -340,8 +339,8 @@ void process(struct dt_iop_module_t *self,
              const dt_iop_roi_t *const roi_in,
              const dt_iop_roi_t *const roi_out)
 {
-  dt_iop_overlay_data_t *data = (dt_iop_overlay_data_t *)piece->data;
-  dt_iop_overlay_global_data_t *gd = (dt_iop_overlay_global_data_t *)self->global_data;
+  dt_iop_overlay_data_t *data = piece->data;
+  dt_iop_overlay_global_data_t *gd = self->global_data;
 
   /* We have several pixelpipes that might want to save the processed overlay in
      the internal cache (both previews and full).
@@ -728,11 +727,10 @@ void process(struct dt_iop_module_t *self,
 
 static void _draw_thumb(GtkWidget *area,
                         cairo_t *crf,
-                        gpointer user_data)
+                        dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_params_t *p = self->params;
 
   GtkAllocation allocation;
   gtk_widget_get_allocation(area, &allocation);
@@ -802,20 +800,19 @@ static void _draw_thumb(GtkWidget *area,
   }
 }
 
-static void _alignment_callback(GtkWidget *tb, gpointer user_data)
+static void _alignment_callback(GtkWidget *tb, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
 
   if(darktable.gui->reset) return;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_params_t *p = self->params;
 
   int index = -1;
 
   for(int i = 0; i < 9; i++)
   {
     /* block signal handler */
-    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, user_data);
+    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, self);
 
     if(GTK_WIDGET(g->align[i]) == tb)
     {
@@ -826,35 +823,9 @@ static void _alignment_callback(GtkWidget *tb, gpointer user_data)
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), FALSE);
 
     /* unblock signal handler */
-    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, user_data);
+    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, self);
   }
   p->alignment = index;
-  dt_dev_add_history_item(darktable.develop, self, TRUE);
-}
-
-static void _reset_alignment_callback(GtkDarktableResetLabel *label, gpointer user_data)
-{
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-
-  if(darktable.gui->reset) return;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
-  dt_iop_overlay_params_t *dp = (dt_iop_overlay_params_t *)self->default_params;
-
-  for(int i = 0; i < 9; i++)
-  {
-    /* block signal handler */
-    g_signal_handlers_block_by_func(g->align[i], _alignment_callback, user_data);
-
-    if(i == dp->alignment)
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), TRUE);
-    else
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->align[i]), FALSE);
-
-    /* unblock signal handler */
-    g_signal_handlers_unblock_by_func(g->align[i], _alignment_callback, user_data);
-  }
-  p->alignment = dp->alignment;
   dt_dev_add_history_item(darktable.develop, self, TRUE);
 }
 
@@ -864,7 +835,7 @@ void commit_params(struct dt_iop_module_t *self,
                    dt_dev_pixelpipe_iop_t *piece)
 {
   dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)p1;
-  dt_iop_overlay_data_t *d = (dt_iop_overlay_data_t *)piece->data;
+  dt_iop_overlay_data_t *d = piece->data;
 
   d->opacity    = p->opacity;
   d->scale      = p->scale;
@@ -896,8 +867,8 @@ void cleanup_pipe(struct dt_iop_module_t *self,
 
 void gui_update(struct dt_iop_module_t *self)
 {
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_params_t *p = self->params;
 
   for(int i = 0; i < 9; i++)
   {
@@ -921,7 +892,7 @@ void gui_update(struct dt_iop_module_t *self)
 
 void reload_defaults(dt_iop_module_t *self)
 {
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_params_t *p = self->params;
 
   if(dt_is_valid_imgid(p->imgid))
     dt_overlay_remove(self->dev->image_storage.id, p->imgid);
@@ -931,8 +902,8 @@ void reload_defaults(dt_iop_module_t *self)
 
 void gui_reset(dt_iop_module_t *self)
 {
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_params_t *p = self->params;
   if(dt_is_valid_imgid(p->imgid))
     dt_overlay_remove(self->dev->image_storage.id, p->imgid);
 
@@ -944,8 +915,8 @@ void gui_changed(dt_iop_module_t *self,
                  GtkWidget *w,
                  void *previous)
 {
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_params_t *p = self->params;
 
   if(w == g->scale_base)
   {
@@ -968,8 +939,7 @@ void gui_changed(dt_iop_module_t *self,
 
 void init_global(dt_iop_module_so_t *module)
 {
-  dt_iop_overlay_global_data_t *gd =
-    (dt_iop_overlay_global_data_t *)calloc(1, sizeof(dt_iop_overlay_global_data_t));
+  dt_iop_overlay_global_data_t *gd = calloc(1, sizeof(dt_iop_overlay_global_data_t));
 
   pthread_mutexattr_t recursive_locking;
   pthread_mutexattr_init(&recursive_locking);
@@ -990,9 +960,8 @@ void cleanup_global(dt_iop_module_so_t *module)
   module->data = NULL;
 }
 
-static void _signal_image_changed(gpointer instance, gpointer user_data)
+static void _signal_image_changed(gpointer instance, dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
   if(!self) return;
 
   for(int k=0; k<MAX_OVERLAY; k++)
@@ -1006,11 +975,10 @@ static void _drag_and_drop_received(GtkWidget *widget,
                                     GtkSelectionData *selection_data,
                                     guint target_type,
                                     guint time,
-                                    gpointer data)
+                                    dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
+  dt_iop_overlay_params_t *p = self->params;
 
   gboolean success = FALSE;
   if(selection_data != NULL && target_type == DND_TARGET_IMGID)
@@ -1066,10 +1034,9 @@ static gboolean _on_drag_motion(GtkWidget *widget,
                                 gint x,
                                 gint y,
                                 guint time,
-                                gpointer user_data)
+                                dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
 
   g->drop_inside = TRUE;
   gtk_widget_queue_draw(widget);
@@ -1079,10 +1046,9 @@ static gboolean _on_drag_motion(GtkWidget *widget,
 static void _on_drag_leave(GtkWidget *widget,
                            GdkDragContext *dc,
                            guint time,
-                           gpointer user_data)
+                           dt_iop_module_t *self)
 {
-  dt_iop_module_t *self = (dt_iop_module_t *)user_data;
-  dt_iop_overlay_gui_data_t *g = (dt_iop_overlay_gui_data_t *)self->gui_data;
+  dt_iop_overlay_gui_data_t *g = self->gui_data;
 
   g->drop_inside = FALSE;
   gtk_widget_queue_draw(widget);
@@ -1091,7 +1057,7 @@ static void _on_drag_leave(GtkWidget *widget,
 void gui_init(struct dt_iop_module_t *self)
 {
   dt_iop_overlay_gui_data_t *g = IOP_GUI_ALLOC(overlay);
-  dt_iop_overlay_params_t *p = (dt_iop_overlay_params_t *)self->params;
+  dt_iop_overlay_params_t *p = self->params;
 
   self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, DT_BAUHAUS_SPACE);
 
@@ -1164,7 +1130,7 @@ void gui_init(struct dt_iop_module_t *self)
   // Create the 3x3 gtk table toggle button table...
   GtkWidget *bat = gtk_grid_new();
   GtkWidget *label = dtgtk_reset_label_new(_("alignment"),
-                                           self, &p->alignment, sizeof(p->alignment), G_CALLBACK(_reset_alignment_callback));
+                                           self, &p->alignment, sizeof(p->alignment));
   gtk_grid_attach(GTK_GRID(bat), label, 0, 0, 1, 3);
   gtk_widget_set_hexpand(label, TRUE);
   gtk_grid_set_row_spacing(GTK_GRID(bat), DT_PIXEL_APPLY_DPI(3));
