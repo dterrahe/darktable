@@ -159,14 +159,14 @@ typedef struct dt_control_t
   gboolean lock_cursor_shape;
 
   // message log
-  uint32_t log_pos, log_ack;
+  int log_pos, log_ack;
   char log_message[DT_CTL_LOG_SIZE][DT_CTL_LOG_MSG_SIZE];
   guint log_message_timeout_id;
   int log_busy;
   dt_pthread_mutex_t log_mutex;
 
   // toast log
-  uint32_t toast_pos, toast_ack;
+  int toast_pos, toast_ack;
   char toast_message[DT_CTL_TOAST_SIZE][DT_CTL_TOAST_MSG_SIZE];
   guint toast_message_timeout_id;
   int toast_busy;
