@@ -404,9 +404,7 @@ static inline GtkWidget *dt_ui_section_label_new(const gchar *str)
 static inline GtkWidget *dt_ui_label_new(const gchar *str)
 {
   GtkWidget *label = gtk_label_new(str);
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_label_set_xalign (GTK_LABEL(label), 0.0f);
-  gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+  g_object_set(label, "halign", GTK_ALIGN_START, "xalign", 0.0f, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
   return label;
 };
 
@@ -568,6 +566,18 @@ void dt_gui_cursor_clear_busy();
 // should be called after making Gtk calls if we won't resume the main event loop for a while
 // (i.e. the current function will do a lot of work before returning)
 void dt_gui_process_events();
+
+GtkWidget *(dt_gui_box_add)(GtkBox *box, gpointer list[]);
+#define dt_gui_box_add(box, ...) dt_gui_box_add(GTK_BOX(box), (gpointer[]){ __VA_ARGS__, NULL })
+#define dt_gui_hbox(...) dt_gui_box_add(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0), __VA_ARGS__)
+#define dt_gui_vbox(...) dt_gui_box_add(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0), __VA_ARGS__)
+
+static inline GtkWidget *dt_gui_expand(GtkWidget *widget)
+{
+  gtk_widget_set_hexpand(widget, TRUE);
+  return widget;
+}
+
 
 #ifdef __cplusplus
 } // extern "C"

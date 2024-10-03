@@ -4379,6 +4379,14 @@ void dt_gui_process_events()
     continue;
 }
 
+GtkWidget *(dt_gui_box_add)(GtkBox *box, gpointer *list)
+{
+  for(; *list; list++)
+    gtk_container_add(GTK_CONTAINER(box), GTK_WIDGET(*list));
+
+  return GTK_WIDGET(box);
+}
+
 // clang-format off
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.py
 // vim: shiftwidth=2 expandtab tabstop=2 cindent
