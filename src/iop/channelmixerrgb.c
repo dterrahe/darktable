@@ -4491,7 +4491,7 @@ void gui_init(struct dt_iop_module_t *self)
   gtk_widget_set_tooltip_text(g->color_picker,
                               _("set white balance to detected from area"));
 
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(hbox), FALSE, FALSE, 0);
+  dt_gui_box_add(self->widget, hbox);
 
   g->illuminant = dt_bauhaus_combobox_from_params(self, N_("illuminant"));
 
@@ -4510,7 +4510,6 @@ void gui_init(struct dt_iop_module_t *self)
   dt_bauhaus_slider_set_format(g->illum_x, "°");
   g_signal_connect(G_OBJECT(g->illum_x), "value-changed",
                    G_CALLBACK(_illum_xy_callback), self);
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(g->illum_x), FALSE, FALSE, 0);
 
   g->illum_y = dt_bauhaus_slider_new_with_range(self, 0., 100., 0, 0, 1);
   dt_bauhaus_widget_set_label(g->illum_y, NULL, N_("chroma"));
@@ -4518,7 +4517,8 @@ void gui_init(struct dt_iop_module_t *self)
   dt_bauhaus_slider_set_hard_max(g->illum_y, ILLUM_Y_MAX);
   g_signal_connect(G_OBJECT(g->illum_y), "value-changed",
                    G_CALLBACK(_illum_xy_callback), self);
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(g->illum_y), FALSE, FALSE, 0);
+
+  dt_gui_box_add(self->widget, g->illum_x, g->illum_y);
 
   g->gamut = dt_bauhaus_slider_from_params(self, "gamut");
   dt_bauhaus_slider_set_soft_max(g->gamut, 4.f);
@@ -4680,9 +4680,7 @@ void gui_init(struct dt_iop_module_t *self)
                 N_("gray"), N_("output gray"), N_("gray"), FALSE, TRUE, 0.0, 1.0)
 
   // start building top level widget
-  self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, DT_BAUHAUS_SPACE);
-
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(g->notebook), FALSE, FALSE, 0);
+  self->widget = dt_gui_vbox(g->notebook);
   const int active_page = dt_conf_get_int("plugins/darkroom/channelmixerrgb/gui_page");
   gtk_widget_show(gtk_notebook_get_nth_page(g->notebook, active_page));
   gtk_notebook_set_current_page(g->notebook, active_page);
@@ -4701,8 +4699,6 @@ void gui_init(struct dt_iop_module_t *self)
   g_signal_connect(G_OBJECT(g->cs.toggle), "toggled",
                    G_CALLBACK(_start_profiling_callback), self);
 
-  GtkWidget *collapsible = GTK_WIDGET(g->cs.container);
-
   DT_BAUHAUS_COMBOBOX_NEW_FULL
     (g->checkers_list, self, N_("calibrate"), N_("chart"),
      _("choose the vendor and the type of your chart"),
@@ -4714,7 +4710,6 @@ void gui_init(struct dt_iop_module_t *self)
      N_("Datacolor SpyderCheckr 48 pre-2018"),
      N_("Datacolor SpyderCheckr 48 post-2018"),
      N_("Datacolor SpyderCheckr Photo"));
-  gtk_box_pack_start(GTK_BOX(collapsible), GTK_WIDGET(g->checkers_list), TRUE, TRUE, 0);
 
   DT_BAUHAUS_COMBOBOX_NEW_FULL
     (g->optimize, self, N_("calibrate"), N_("optimize for"),
@@ -4732,7 +4727,6 @@ void gui_init(struct dt_iop_module_t *self)
      N_("sky and water colors"),
      N_("average delta E"),
      N_("maximum delta E"));
-  gtk_box_pack_start(GTK_BOX(collapsible), GTK_WIDGET(g->optimize), TRUE, TRUE, 0);
 
   g->safety = dt_bauhaus_slider_new_with_range_and_feedback(self, 0., 1., 0, 0.5, 3, TRUE);
   dt_bauhaus_widget_set_label(g->safety, N_("calibrate"), N_("patch scale"));
@@ -4743,10 +4737,8 @@ void gui_init(struct dt_iop_module_t *self)
        "the patches frame cast a shadows on the edges of the patch." ));
   g_signal_connect(G_OBJECT(g->safety), "value-changed",
                    G_CALLBACK(_safety_changed_callback), self);
-  gtk_box_pack_start(GTK_BOX(collapsible), GTK_WIDGET(g->safety), TRUE, TRUE, 0);
 
   g->label_delta_E = dt_ui_label_new("");
-  gtk_box_pack_start(GTK_BOX(collapsible), GTK_WIDGET(g->label_delta_E), TRUE, TRUE, 0);
   gtk_widget_set_tooltip_text(g->label_delta_E,
                               _("the delta E is using the CIE 2000 formula"));
 
@@ -4777,7 +4769,8 @@ void gui_init(struct dt_iop_module_t *self)
   gtk_widget_set_tooltip_text(g->button_validate, _("check the output delta E"));
   gtk_box_pack_end(GTK_BOX(toolbar), GTK_WIDGET(g->button_validate), FALSE, FALSE, 0);
 
-  gtk_box_pack_start(GTK_BOX(collapsible), GTK_WIDGET(toolbar), FALSE, FALSE, 0);
+  dt_gui_box_add(g->cs.container, g->checkers_list, g->optimize, g->safety,
+                 g->label_delta_E, toolbar);
 }
 
 void gui_cleanup(struct dt_iop_module_t *self)

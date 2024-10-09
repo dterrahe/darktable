@@ -1193,22 +1193,16 @@ void gui_init(dt_lib_module_t *self)
 {
   dt_lib_export_t *d = (dt_lib_export_t *)malloc(sizeof(dt_lib_export_t));
   self->data = (void *)d;
-  self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
   dt_action_insert_sorted(DT_ACTION(self), &darktable.control->actions_format);
   dt_action_insert_sorted(DT_ACTION(self), &darktable.control->actions_storage);
 
-  GtkWidget *label = dt_ui_section_label_new(C_("section", "storage options"));
-  gtk_box_pack_start(GTK_BOX(self->widget), label, FALSE, TRUE, 0);
-
   d->storage = dt_bauhaus_combobox_new_action(DT_ACTION(self));
   dt_bauhaus_widget_set_label(d->storage, NULL, N_("target storage"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->storage, FALSE, TRUE, 0);
 
   // add all storage widgets to the stack widget
   d->storage_extra_container = gtk_stack_new();
   gtk_stack_set_homogeneous(GTK_STACK(d->storage_extra_container),FALSE);
-  gtk_box_pack_start(GTK_BOX(self->widget), d->storage_extra_container, FALSE, TRUE, 0);
 
   for(const GList *it = darktable.imageio->plugins_storage;
       it;
@@ -1228,19 +1222,14 @@ void gui_init(dt_lib_module_t *self)
   g_signal_connect(G_OBJECT(d->storage), "value-changed",
                    G_CALLBACK(_storage_changed), self);
 
-  label = dt_ui_section_label_new(C_("section", "format options"));
-  gtk_box_pack_start(GTK_BOX(self->widget), label, FALSE, TRUE, 0);
-
   d->format = dt_bauhaus_combobox_new_action(DT_ACTION(self));
   dt_bauhaus_widget_set_label(d->format, NULL, N_("file format"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->format, FALSE, TRUE, 0);
   g_signal_connect(G_OBJECT(d->format), "value-changed",
                    G_CALLBACK(_format_changed), (gpointer)d);
 
   // add all format widgets to the stack widget
   d->format_extra_container = gtk_stack_new();
   gtk_stack_set_homogeneous(GTK_STACK(d->format_extra_container),FALSE);
-  gtk_box_pack_start(GTK_BOX(self->widget), d->format_extra_container, FALSE, TRUE, 0);
   for(const GList *it = darktable.imageio->plugins_format; it; it = g_list_next(it))
   {
     const dt_imageio_module_format_t *module = it->data;
@@ -1249,9 +1238,6 @@ void gui_init(dt_lib_module_t *self)
       gtk_container_add(GTK_CONTAINER(d->format_extra_container), module->widget);
     }
   }
-
-  label = dt_ui_section_label_new(C_("section", "global options"));
-  gtk_box_pack_start(GTK_BOX(self->widget), label, FALSE, TRUE, 0);
 
   DT_BAUHAUS_COMBOBOX_NEW_FULL(d->dimensions_type, self, NULL, N_("set size"),
                                _("choose a method for setting the output size"),
@@ -1336,17 +1322,6 @@ void gui_init(dt_lib_module_t *self)
   gtk_widget_set_halign(GTK_WIDGET(d->scale), GTK_ALIGN_FILL);
   gtk_widget_set_halign(GTK_WIDGET(d->size_in_px), GTK_ALIGN_END);
 
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     GTK_WIDGET(d->dimensions_type), FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     GTK_WIDGET(d->px_size), FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     GTK_WIDGET(d->print_size), FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     GTK_WIDGET(d->scale), FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     GTK_WIDGET(d->size_in_px), FALSE, FALSE, 0);
-
   DT_BAUHAUS_COMBOBOX_NEW_FULL
     (d->upscale, self, NULL,
      N_("allow upscaling"), NULL,
@@ -1354,7 +1329,6 @@ void gui_init(dt_lib_module_t *self)
      _callback_bool,
      (gpointer)CONFIG_PREFIX "upscale",
      N_("no"), N_("yes"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->upscale, FALSE, TRUE, 0);
 
   DT_BAUHAUS_COMBOBOX_NEW_FULL
     (d->high_quality, self, NULL,
@@ -1363,7 +1337,6 @@ void gui_init(dt_lib_module_t *self)
      dt_conf_get_bool(CONFIG_PREFIX "high_quality_processing") ? 1 : 0, _callback_bool,
      (gpointer)CONFIG_PREFIX "high_quality_processing",
      N_("no"), N_("yes"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->high_quality, FALSE, TRUE, 0);
 
   DT_BAUHAUS_COMBOBOX_NEW_FULL
     (d->export_masks, self, NULL,
@@ -1372,13 +1345,11 @@ void gui_init(dt_lib_module_t *self)
      dt_conf_get_bool(CONFIG_PREFIX "export_masks") ? 1 : 0, _callback_bool,
      (gpointer)CONFIG_PREFIX "export_masks",
      N_("no"), N_("yes"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->export_masks, FALSE, TRUE, 0);
 
   //  Add profile combo
 
   d->profile = dt_bauhaus_combobox_new_action(DT_ACTION(self));
   dt_bauhaus_widget_set_label(d->profile, NULL, N_("profile"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->profile, FALSE, TRUE, 0);
   dt_bauhaus_combobox_add(d->profile, _("image settings"));
   for(GList *l = darktable.color_profiles->profiles; l; l = g_list_next(l))
   {
@@ -1419,7 +1390,6 @@ void gui_init(dt_lib_module_t *self)
       N_("relative colorimetric"),
       NC_("rendering intent", "saturation"),
       N_("absolute colorimetric"));
-  gtk_box_pack_start(GTK_BOX(self->widget), d->intent, FALSE, TRUE, 0);
 
   //  Add check to control whether the style is to replace or append the current module
 
@@ -1453,16 +1423,11 @@ void gui_init(dt_lib_module_t *self)
   d->style_name = NULL;
   const char *stored_style = dt_conf_get_string_const(CONFIG_PREFIX "style");
   _update_style_label(d, stored_style ? stored_style : "");
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(style_box), FALSE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(self->widget), d->style_mode, FALSE, TRUE, 0);
 
   //  Set callback signals
 
   g_signal_connect(G_OBJECT(d->profile), "value-changed",
                    G_CALLBACK(_profile_changed), (gpointer)d);
-
-  GtkBox *hbox = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(hbox), FALSE, TRUE, 0);
 
   // Export button
   d->export_button = GTK_BUTTON(dt_action_button_new
@@ -1470,7 +1435,6 @@ void gui_init(dt_lib_module_t *self)
                                  _export_button_clicked, d,
                                  _("export with current settings"),
                                  GDK_KEY_e, GDK_CONTROL_MASK));
-  gtk_box_pack_start(hbox, GTK_WIDGET(d->export_button), TRUE, TRUE, 0);
 
   gtk_widget_add_events(d->width, GDK_BUTTON_PRESS_MASK);
   gtk_widget_add_events(d->height, GDK_BUTTON_PRESS_MASK);
@@ -1488,6 +1452,18 @@ void gui_init(dt_lib_module_t *self)
                    G_CALLBACK(_height_mdlclick), (gpointer)d);
   g_signal_connect(G_OBJECT(d->scale), "button-press-event",
                    G_CALLBACK(_scale_mdlclick), (gpointer)d);
+
+  self->widget = dt_gui_vbox
+    (dt_ui_section_label_new(C_("section", "storage options")),
+     d->storage, d->storage_extra_container,
+     dt_ui_section_label_new(C_("section", "format options")),
+     d->format, d->format_extra_container,
+     dt_ui_section_label_new(C_("section", "global options")),
+     d->dimensions_type, d->px_size, d->print_size, d->scale, d->size_in_px,
+     d->upscale, d->high_quality, d->export_masks,
+     d->profile, d->intent,
+     style_box, d->style_mode,
+     d->export_button);
 
   // this takes care of keeping hidden widgets hidden
   gtk_widget_show_all(self->widget);

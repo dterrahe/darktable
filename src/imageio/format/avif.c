@@ -900,8 +900,6 @@ void gui_init(dt_imageio_module_format_t *self)
 
   self->gui_data = (void *)gui;
 
-  self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-
   /*
    * Bit depth combo box
    */
@@ -922,8 +920,6 @@ void gui_init(dt_imageio_module_format_t *self)
   gtk_widget_set_tooltip_text(gui->bit_depth,
           _("color information stored in an image, higher is better"));
 
-  gtk_box_pack_start(GTK_BOX(self->widget), gui->bit_depth, TRUE, TRUE, 0);
-
   /*
    * Color mode combo box
    */
@@ -934,8 +930,6 @@ void gui_init(dt_imageio_module_format_t *self)
   dt_bauhaus_combobox_set_default(gui->color_mode,
                                   dt_confgen_get_bool("plugins/imageio/format/avif/color_mode", DT_DEFAULT));
 
-  gtk_box_pack_start(GTK_BOX(self->widget), gui->color_mode, TRUE, TRUE, 0);
-
   /*
    * Tiling combo box
    */
@@ -945,11 +939,6 @@ void gui_init(dt_imageio_module_format_t *self)
                                  "the loss of image quality is negligible."),
                                tiling, tiling_changed, self,
                                N_("on"), N_("off"));
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     gui->tiling,
-                     TRUE,
-                     TRUE,
-                     0);
 
   /*
    * Compression type combo box
@@ -969,12 +958,6 @@ void gui_init(dt_imageio_module_format_t *self)
 
   dt_bauhaus_combobox_set_default(gui->compression_type,
                                   dt_confgen_get_int("plugins/imageio/format/avif/compression_type", DT_DEFAULT));
-
-  gtk_box_pack_start(GTK_BOX(self->widget),
-                     gui->compression_type,
-                     TRUE,
-                     TRUE,
-                     0);
 
   /*
    * Quality combo box
@@ -996,8 +979,6 @@ void gui_init(dt_imageio_module_format_t *self)
 
   dt_bauhaus_slider_set(gui->quality, quality);
 
-  gtk_box_pack_start(GTK_BOX(self->widget), gui->quality, TRUE, TRUE, 0);
-
   gtk_widget_set_visible(gui->quality, compression_type != AVIF_COMP_LOSSLESS);
   gtk_widget_set_no_show_all(gui->quality, TRUE);
 
@@ -1017,8 +998,6 @@ void gui_init(dt_imageio_module_format_t *self)
 
   dt_bauhaus_slider_set(gui->speed, speed);
 
-  gtk_box_pack_start(GTK_BOX(self->widget), gui->speed, TRUE, TRUE, 0);
-
   g_signal_connect(G_OBJECT(gui->bit_depth),
                    "value-changed",
                    G_CALLBACK(bit_depth_changed),
@@ -1035,6 +1014,9 @@ void gui_init(dt_imageio_module_format_t *self)
                    "value-changed",
                    G_CALLBACK(speed_changed),
                    NULL);
+
+  self->widget = dt_gui_vbox(gui->bit_depth, gui->color_mode, gui->tiling,
+                             gui->compression_type, gui->quality, gui->speed);
 }
 
 void gui_cleanup(dt_imageio_module_format_t *self)
