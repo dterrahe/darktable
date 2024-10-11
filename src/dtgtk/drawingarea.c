@@ -17,6 +17,7 @@
 */
 
 #include "dtgtk/drawingarea.h"
+#include "common/darktable.h"
 
 G_DEFINE_TYPE(GtkDarktableDrawingArea, dtgtk_drawing_area, GTK_TYPE_DRAWING_AREA);
 

@@ -30,7 +30,7 @@
 #include "osx/osx.h"
 #endif
 #ifdef GDK_WINDOWING_WAYLAND
-#include <gdk/gdkwayland.h>
+// #include <gdk/gdkwayland.h>
 #endif
 
 #include <strings.h>

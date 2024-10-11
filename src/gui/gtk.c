@@ -50,7 +50,7 @@
 
 #include <gdk/gdkkeysyms.h>
 #ifdef GDK_WINDOWING_WAYLAND
-#include <gdk/gdkwayland.h>
+// #include <gdk/gdkwayland.h>
 #endif
 #include <gtk/gtk.h>
 #include <math.h>
