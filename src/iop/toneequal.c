@@ -3024,13 +3024,13 @@ static gboolean dt_iop_toneequalizer_bar_draw(GtkWidget *widget,
   return TRUE;
 }
 
-
-static gboolean area_enter_leave_notify(GtkWidget *widget,
-                                        GdkEventCrossing *event,
-                                        dt_iop_module_t *self)
+static void _toneequal_enter(GtkEventControllerMotion *controller,
+                             double x,
+                             double y,
+                             dt_iop_module_t *self)
 {
-  if(darktable.gui->reset) return TRUE;
-  if(!self->enabled) return FALSE;
+  if(darktable.gui->reset) return;
+  if(!self->enabled) return;
 
   dt_iop_toneequalizer_gui_data_t *g = self->gui_data;
 
@@ -3044,8 +3044,8 @@ static gboolean area_enter_leave_notify(GtkWidget *widget,
     dt_dev_add_history_item(darktable.develop, self, FALSE);
   }
   dt_iop_gui_enter_critical_section(self);
-  g->area_x = (event->x - g->inset);
-  g->area_y = (event->y - g->inset);
+  g->area_x = (x - g->inset);
+  g->area_y = (y - g->inset);
   g->area_dragging = FALSE;
   g->area_active_node = -1;
   g->area_cursor_valid = (g->area_x > 0.0f
@@ -3055,23 +3055,21 @@ static gboolean area_enter_leave_notify(GtkWidget *widget,
   dt_iop_gui_leave_critical_section(self);
 
   gtk_widget_queue_draw(GTK_WIDGET(g->area));
-  return FALSE;
 }
 
-
-static gboolean area_button_press(GtkWidget *widget,
-                                  GdkEventButton *event,
-                                  dt_iop_module_t *self)
+static void _toneequal_button_press(GtkGesture *gesture,
+                                    int n_press,
+                                    double x,
+                                    double y,
+                                    dt_iop_module_t *self)
 {
-
-  if(darktable.gui->reset) return TRUE;
+  if(darktable.gui->reset) return;
 
   dt_iop_toneequalizer_gui_data_t *g = self->gui_data;
 
   dt_iop_request_focus(self);
 
-  if(event->button == 1
-     && event->type == GDK_2BUTTON_PRESS)
+  if(n_press == 2)
   {
     dt_iop_toneequalizer_params_t *p = self->params;
     const dt_iop_toneequalizer_params_t *const d = self->default_params;
@@ -3093,9 +3091,8 @@ static gboolean area_button_press(GtkWidget *widget,
     // Redraw graph
     gtk_widget_queue_draw(GTK_WIDGET(g->area));
     dt_dev_add_history_item(darktable.develop, self, TRUE);
-    return TRUE;
   }
-  else if(event->button == 1)
+  else
   {
     if(self->enabled)
     {
@@ -3106,22 +3103,19 @@ static gboolean area_button_press(GtkWidget *widget,
     {
       dt_dev_add_history_item(darktable.develop, self, TRUE);
     }
-    return TRUE;
   }
 
   // Unlock the colour picker so we can display our own custom cursor
   dt_iop_color_picker_reset(self, TRUE);
-
-  return FALSE;
 }
 
-
-static gboolean area_motion_notify(GtkWidget *widget,
-                                   GdkEventMotion *event,
-                                   dt_iop_module_t *self)
+static void _toneequal_motion(GtkEventControllerMotion *controller,
+                              double x,
+                              double y,
+                              dt_iop_module_t *self)
 {
-  if(darktable.gui->reset) return TRUE;
-  if(!self->enabled) return FALSE;
+  if(darktable.gui->reset) return;
+  if(!self->enabled) return;
 
   dt_iop_toneequalizer_gui_data_t *g = self->gui_data;
   dt_iop_toneequalizer_params_t *p = self->params;
@@ -3131,7 +3125,7 @@ static gboolean area_motion_notify(GtkWidget *widget,
     // vertical distance travelled since button_pressed event
     dt_iop_gui_enter_critical_section(self);
     // graph spans over 4 EV
-    const float offset = (-event->y + g->area_y) / g->graph_height * 4.0f;
+    const float offset = (-y + g->area_y) / g->graph_height * 4.0f;
     const float cursor_exposure = g->area_x / g->graph_width * 8.0f - 8.0f;
 
     // Get the desired correction on exposure channels
@@ -3141,8 +3135,8 @@ static gboolean area_motion_notify(GtkWidget *widget,
   }
 
   dt_iop_gui_enter_critical_section(self);
-  g->area_x = (event->x - g->inset);
-  g->area_y = event->y;
+  g->area_x = (x - g->inset);
+  g->area_y = y;
   g->area_cursor_valid = (g->area_x > 0.0f
                           && g->area_x < g->graph_width
                           && g->area_y > 0.0f
@@ -3166,13 +3160,14 @@ static gboolean area_motion_notify(GtkWidget *widget,
   dt_iop_gui_leave_critical_section(self);
 
   gtk_widget_queue_draw(GTK_WIDGET(g->area));
-  return TRUE;
 }
 
 
-static gboolean area_button_release(GtkWidget *widget,
-                                    GdkEventButton *event,
-                                    dt_iop_module_t *self)
+static gboolean _toneequal_button_release(GtkGesture *gesture,
+                                          int n_press,
+                                          double x,
+                                          double y,
+                                          dt_iop_module_t *self)
 {
   if(darktable.gui->reset) return TRUE;
   if(!self->enabled) return FALSE;
@@ -3182,25 +3177,20 @@ static gboolean area_button_release(GtkWidget *widget,
   // Give focus to module
   dt_iop_request_focus(self);
 
-  if(event->button == 1)
+  dt_iop_toneequalizer_params_t *p = self->params;
+
+  if(g->area_dragging)
   {
-    dt_iop_toneequalizer_params_t *p = self->params;
+    // Update GUI with new params
+    update_exposure_sliders(g, p);
 
-    if(g->area_dragging)
-    {
-      // Update GUI with new params
-      update_exposure_sliders(g, p);
+    dt_dev_add_history_item(darktable.develop, self, FALSE);
 
-      dt_dev_add_history_item(darktable.develop, self, FALSE);
-
-      dt_iop_gui_enter_critical_section(self);
-      g->area_dragging= 0;
-      dt_iop_gui_leave_critical_section(self);
-
-      return TRUE;
-    }
+    dt_iop_gui_enter_critical_section(self);
+    g->area_dragging= 0;
+    dt_iop_gui_leave_critical_section(self);
   }
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean area_scroll(GtkWidget *widget,
@@ -3371,22 +3361,11 @@ void gui_init(struct dt_iop_module_t *self)
   gtk_widget_set_name(GTK_WIDGET(wrapper), "toneeqgraph");
   dt_action_define_iop(self, NULL, N_("graph"), GTK_WIDGET(wrapper), NULL);
   gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(wrapper), TRUE, TRUE, 0);
-  gtk_widget_add_events(GTK_WIDGET(g->area),
-                        GDK_POINTER_MOTION_MASK | darktable.gui->scroll_mask
-                        | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK
-                        | GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK);
+  gtk_widget_add_events(GTK_WIDGET(g->area), darktable.gui->scroll_mask);
   gtk_widget_set_can_focus(GTK_WIDGET(g->area), TRUE);
   g_signal_connect(G_OBJECT(g->area), "draw", G_CALLBACK(area_draw), self);
-  g_signal_connect(G_OBJECT(g->area), "button-press-event",
-                   G_CALLBACK(area_button_press), self);
-  g_signal_connect(G_OBJECT(g->area), "button-release-event",
-                   G_CALLBACK(area_button_release), self);
-  g_signal_connect(G_OBJECT(g->area), "leave-notify-event",
-                   G_CALLBACK(area_enter_leave_notify), self);
-  g_signal_connect(G_OBJECT(g->area), "enter-notify-event",
-                   G_CALLBACK(area_enter_leave_notify), self);
-  g_signal_connect(G_OBJECT(g->area), "motion-notify-event",
-                   G_CALLBACK(area_motion_notify), self);
+  dt_gui_connect_click(g->area, _toneequal_button_press, _toneequal_button_release, self);
+  dt_gui_connect_motion(g->area, _toneequal_motion, _toneequal_enter, NULL, self);
   g_signal_connect(G_OBJECT(g->area), "scroll-event",
                    G_CALLBACK(area_scroll), self);
   gtk_widget_set_tooltip_text(GTK_WIDGET(g->area), _("double-click to reset the curve"));

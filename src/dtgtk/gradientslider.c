@@ -533,7 +533,7 @@ static void _gradient_slider_destroy(GtkWidget *widget)
 
   gslider->colors = NULL;
 
-  GTK_WIDGET_CLASS(parent_class)->destroy(widget);
+  // GTK_WIDGET_CLASS(parent_class)->destroy(widget);
 }
 
 static gboolean _gradient_slider_draw(GtkWidget *widget, cairo_t *cr)
