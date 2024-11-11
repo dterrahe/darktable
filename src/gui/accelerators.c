@@ -1714,8 +1714,9 @@ static void _fill_shortcut_fields(GtkTreeViewColumn *column,
   }
   g_object_set(cell, "text", field_text,
                      "editable", editable,
-                     "underline", PANGO_UNDERLINE_NONE,
-                     "weight", editable && weight != PANGO_WEIGHT_LIGHT ? PANGO_WEIGHT_BOLD : weight,
+                     "cell-background-rgba", &(GdkRGBA){ 1, 1, 1, .05 },
+                     "cell-background-set", editable,
+                     "weight", weight,
                      NULL);
   g_free(field_text);
 }
