@@ -1400,8 +1400,7 @@ static void _lib_histogram_draw_vectorscope(const dt_lib_histogram_t *d, cairo_t
       // draw information about current selected harmony
       PangoLayout *layout;
       PangoRectangle ink;
-      PangoFontDescription *desc =
-        pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+      PangoFontDescription *desc = dt_gui_get_font();
       pango_font_description_set_weight(desc, PANGO_WEIGHT_NORMAL);
       pango_font_description_set_absolute_size(desc, DT_PIXEL_APPLY_DPI(16) * PANGO_SCALE);
       layout = pango_cairo_create_layout(cr);

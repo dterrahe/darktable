@@ -1571,8 +1571,7 @@ static gboolean dt_iop_tonecurve_draw(GtkWidget *widget,
         cairo_save(cr);
         PangoLayout *layout;
         PangoRectangle ink;
-        PangoFontDescription *desc =
-          pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+        PangoFontDescription *desc = dt_gui_get_font();
         pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
         pango_font_description_set_absolute_size(desc, PANGO_SCALE);
         layout = pango_cairo_create_layout(cr);
@@ -1665,8 +1664,7 @@ static gboolean dt_iop_tonecurve_draw(GtkWidget *widget,
     // draw information about current selected node
     PangoLayout *layout;
     PangoRectangle ink;
-    PangoFontDescription *desc =
-      pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+    PangoFontDescription *desc = dt_gui_get_font();
     pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
     pango_font_description_set_absolute_size(desc, PANGO_SCALE);
     layout = pango_cairo_create_layout(cr);
