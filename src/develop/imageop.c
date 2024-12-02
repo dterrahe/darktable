@@ -1906,7 +1906,7 @@ dt_iop_module_t *dt_iop_commit_blend_params(dt_iop_module_t *module,
   for(GList *iter = module->dev->iop; iter; iter = g_list_next(iter))
   {
     dt_iop_module_t *candidate = iter->data;
-    if(dt_iop_module_is(candidate->so, blendop_params->raster_mask_source))
+    if(dt_iop_module_is(candidate, blendop_params->raster_mask_source))
     {
       if(candidate->multi_priority == blendop_params->raster_mask_instance)
       {
@@ -3315,7 +3315,7 @@ dt_iop_module_t *dt_iop_get_module_from_list(GList *iop_list, const char *op)
   for(GList *modules = iop_list; modules; modules = g_list_next(modules))
   {
     dt_iop_module_t *mod = modules->data;
-    if(dt_iop_module_is(mod->so, op))
+    if(dt_iop_module_is(mod, op))
     {
       result = mod;
       break;
@@ -3332,32 +3332,22 @@ dt_iop_module_t *dt_iop_get_module(const char *op)
 
 dt_iop_module_so_t *dt_iop_get_module_so(const char *op)
 {
-  dt_iop_module_so_t *result = NULL;
-
   for(GList *modules = darktable.iop; modules; modules = g_list_next(modules))
   {
     dt_iop_module_so_t *mod = modules->data;
-    if(dt_iop_module_is(mod, op))
+    if(!g_strcmp0(mod->op, op))
     {
-      result = mod;
-      break;
+      return mod;
     }
   }
 
-  return result;
+  return NULL;
 }
 
 int dt_iop_get_module_flags(const char *op)
 {
-  GList *modules = darktable.iop;
-  while(modules)
-  {
-    dt_iop_module_so_t *module = modules->data;
-    if(dt_iop_module_is(module, op))
-      return module->flags();
-    modules = g_list_next(modules);
-  }
-  return 0;
+  dt_iop_module_so_t *module = dt_iop_get_module_so(op);
+  return module ? module->flags() : 0;
 }
 
 static void _show_module_callback(dt_iop_module_t *module)
@@ -3633,7 +3623,7 @@ dt_iop_module_t *dt_iop_get_module_by_op_priority(GList *modules,
   {
     dt_iop_module_t *mod = m->data;
 
-    if(dt_iop_module_is(mod->so, operation)
+    if(dt_iop_module_is(mod, operation)
        && (mod->multi_priority == multi_priority || multi_priority == -1))
     {
       mod_ret = mod;
@@ -3774,7 +3764,7 @@ dt_iop_module_t *dt_iop_get_module_by_instance_name(GList *modules,
   {
     dt_iop_module_t *mod = m->data;
 
-    if((dt_iop_module_is(mod->so, operation))
+    if((dt_iop_module_is(mod, operation))
        && ((multi_name == NULL) || (strcmp(mod->multi_name, multi_name) == 0)))
     {
       mod_ret = mod;
@@ -3809,7 +3799,7 @@ gboolean dt_iop_is_first_instance(GList *modules, const dt_iop_module_t *module)
   while(iop)
   {
     dt_iop_module_t *m = iop->data;
-    if(dt_iop_module_is(m->so, module->op))
+    if(dt_iop_module_is(m, module->op))
     {
       is_first = (m == module);
       break;
