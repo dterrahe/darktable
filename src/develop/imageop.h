@@ -448,10 +448,10 @@ dt_iop_module_t *dt_iop_get_module_by_instance_name(GList *modules,
                                                     const char *operation,
                                                     const char *multi_name);
 /** check for module name */
-static inline gboolean dt_iop_module_is(const dt_iop_module_so_t *module,
+static inline gboolean dt_iop_module_is(const dt_iop_module_t *module,
                                         const char*operation)
 {
-  return !g_strcmp0(module->op, operation);
+  return !g_strcmp0(module->so->op, operation);
 }
 
 /** count instances of a module **/

@@ -495,17 +495,17 @@ static void _dev_pixelpipe_synch(dt_dev_pixelpipe_t *pipe,
       // not appropriate for the image.  Fixing that seemed to be
       // almost impossible after long discussions but at least we can
       // test, correct and add a problem hint here.
-      if(dt_iop_module_is(piece->module->so, "demosaic")
-         || dt_iop_module_is(piece->module->so, "rawprepare"))
+      if(dt_iop_module_is(piece->module, "demosaic")
+         || dt_iop_module_is(piece->module, "rawprepare"))
       {
         if(rawprep_img && !active)
           piece->enabled = TRUE;
         else if(!rawprep_img && active)
           piece->enabled = FALSE;
       }
-      else if((dt_iop_module_is(piece->module->so, "rawdenoise"))
-              || (dt_iop_module_is(piece->module->so, "hotpixels"))
-              || (dt_iop_module_is(piece->module->so, "cacorrect")))
+      else if((dt_iop_module_is(piece->module, "rawdenoise"))
+              || (dt_iop_module_is(piece->module, "hotpixels"))
+              || (dt_iop_module_is(piece->module, "cacorrect")))
       {
         if(!rawprep_img && active) piece->enabled = FALSE;
       }
@@ -550,7 +550,7 @@ static void _dev_pixelpipe_synch(dt_dev_pixelpipe_t *pipe,
         for(GList *m = dev->module_filter_out; m; m = g_list_next(m))
         {
           char *mod = (char *)(m->data);
-          if(dt_iop_module_is(piece->module->so, mod))
+          if(dt_iop_module_is(piece->module, mod))
           {
             piece->enabled = FALSE;
             dt_print_pipe(DT_DEBUG_PARAMS | DT_DEBUG_PIPE,
@@ -1628,7 +1628,7 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
   const gboolean gamma_preview =
     (pipe->type & DT_DEV_PIXELPIPE_PREVIEW)
     && (module != NULL)
-    && dt_iop_module_is(module->so, "gamma");
+    && dt_iop_module_is(module, "gamma");
 
   // we also never want any cached data if in masking mode or nocache is active
   // otherwise we check for a valid cacheline
@@ -1890,9 +1890,9 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
   const gboolean important = module
       && (pipe->mask_display == DT_DEV_PIXELPIPE_DISPLAY_NONE)
       && (((pipe->type & DT_DEV_PIXELPIPE_PREVIEW)
-           && dt_iop_module_is(module->so, "colorout"))
+           && dt_iop_module_is(module, "colorout"))
        || ((pipe->type & DT_DEV_PIXELPIPE_FULL)
-           && dt_iop_module_is(module->so, "gamma")));
+           && dt_iop_module_is(module, "gamma")));
 
   dt_dev_pixelpipe_cache_get(pipe, hash, bufsize,
                              output, out_format, module, important);
@@ -1917,7 +1917,7 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
       ensuring pixelpipe cacheline integrity, gamma is responsible to invalidate
       it's input data.
   */
-  if(!dt_iop_module_is(module->so, "gamma")
+  if(!dt_iop_module_is(module, "gamma")
      && (pipe->mask_display != DT_DEV_PIXELPIPE_DISPLAY_NONE)
      && !(module->operation_tags() & IOP_TAG_DISTORT)
      && (in_bpp == out_bpp)
@@ -2668,8 +2668,8 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
            && dev->gui_attached
            && ((module == dt_dev_gui_module())
                 || darktable.develop->history_last_module == module
-                || dt_iop_module_is(module->so, "colorout")
-                || dt_iop_module_is(module->so, "finalscale"));
+                || dt_iop_module_is(module, "colorout")
+                || dt_iop_module_is(module, "finalscale"));
 
         if(important_cl)
         {
@@ -2891,7 +2891,7 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
 
   // warn on NaN or infinity
   if((darktable.unmuted & DT_DEBUG_NAN)
-     && !dt_iop_module_is(module->so, "gamma"))
+     && !dt_iop_module_is(module, "gamma"))
   {
     if(dt_pipe_shutdown(pipe))
       return TRUE;
@@ -2957,7 +2957,7 @@ static gboolean _dev_pixelpipe_process_rec(dt_dev_pixelpipe_t *pipe,
 
   if(dev->gui_attached && !dev->gui_leaving
      && pipe == dev->preview_pipe
-     && (dt_iop_module_is(module->so, "gamma"))) // only gamma provides meaningful RGB data
+     && (dt_iop_module_is(module, "gamma"))) // only gamma provides meaningful RGB data
   {
     // Pick RGB/Lab for the primary colorpicker and live samples
     if(darktable.lib->proxy.colorpicker.picker_proxy
@@ -2998,7 +2998,7 @@ gboolean dt_dev_pixelpipe_process_no_gamma(dt_dev_pixelpipe_t *pipe,
   GList *gammap = g_list_last(pipe->nodes);
   dt_dev_pixelpipe_iop_t *gamma = gammap->data;
 
-  while(!dt_iop_module_is(gamma->module->so, "gamma"))
+  while(!dt_iop_module_is(gamma->module, "gamma"))
   {
     gamma = NULL;
     gammap = g_list_previous(gammap);
@@ -3017,7 +3017,7 @@ void dt_dev_pixelpipe_disable_after(dt_dev_pixelpipe_t *pipe, const char *op)
 {
   GList *nodes = g_list_last(pipe->nodes);
   dt_dev_pixelpipe_iop_t *piece = nodes->data;
-  while(!dt_iop_module_is(piece->module->so, op))
+  while(!dt_iop_module_is(piece->module, op))
   {
     piece->enabled = FALSE;
     piece = NULL;
@@ -3031,7 +3031,7 @@ void dt_dev_pixelpipe_disable_before(dt_dev_pixelpipe_t *pipe, const char *op)
 {
   GList *nodes = pipe->nodes;
   dt_dev_pixelpipe_iop_t *piece = nodes->data;
-  while(!dt_iop_module_is(piece->module->so, op))
+  while(!dt_iop_module_is(piece->module, op))
   {
     piece->enabled = FALSE;
     piece = NULL;
@@ -3361,7 +3361,7 @@ static inline gboolean _distort_piece_roi(const dt_dev_pixelpipe_iop_t *piece)
 
 static inline gboolean _empty_finalscale(const dt_dev_pixelpipe_iop_t *piece)
 {
-  return dt_iop_module_is(piece->module->so, "finalscale")
+  return dt_iop_module_is(piece->module, "finalscale")
       && piece->processed_roi_in.width == 0
       && piece->processed_roi_in.height == 0;
 
@@ -3660,14 +3660,14 @@ float *dt_dev_distort_detail_mask(dt_dev_pixelpipe_iop_t *piece,
   {
     const dt_dev_pixelpipe_iop_t *candidate = source_iter->data;
 
-    if(dt_iop_module_is(candidate->module->so, "demosaic")
+    if(dt_iop_module_is(candidate->module, "demosaic")
        && candidate->enabled
        && raw_img)
     {
       valid = TRUE;
       break;
     }
-    if(dt_iop_module_is(candidate->module->so, "rawprepare")
+    if(dt_iop_module_is(candidate->module, "rawprepare")
        && candidate->enabled
        && !raw_img)
     {

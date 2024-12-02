@@ -839,17 +839,17 @@ dt_iop_order_iccprofile_info_t *dt_ioppr_get_iop_work_profile_info(const struct 
     dt_iop_module_t *mod = modules->data;
 
     // we reach the module, that's it
-    if(dt_iop_module_is(mod->so, module->op)) break;
+    if(dt_iop_module_is(mod, module->op)) break;
 
     // if we reach colorout means that the module is after it
-    if(dt_iop_module_is(mod->so, "colorout"))
+    if(dt_iop_module_is(mod, "colorout"))
     {
       in_between = FALSE;
       break;
     }
 
     // we reach colorin, so far we're good
-    if(dt_iop_module_is(mod->so, "colorin"))
+    if(dt_iop_module_is(mod, "colorin"))
     {
       in_between = TRUE;
       break;
@@ -1044,34 +1044,21 @@ void dt_ioppr_get_work_profile_type(struct dt_develop_t *dev,
   *profile_type = DT_COLORSPACE_NONE;
   *profile_filename = NULL;
 
-  // use introspection to get the params values
-  dt_iop_module_so_t *colorin_so = NULL;
   dt_iop_module_t *colorin = NULL;
-  for(const GList *modules = darktable.iop; modules; modules = g_list_next(modules))
+  for(const GList *modules = dev->iop; modules; modules = g_list_next(modules))
   {
-    dt_iop_module_so_t *module_so = modules->data;
-    if(dt_iop_module_is(module_so, "colorin"))
+    dt_iop_module_t *module = modules->data;
+    if(dt_iop_module_is(module, "colorin"))
     {
-      colorin_so = module_so;
+      colorin = module;
       break;
     }
   }
-  if(colorin_so && colorin_so->get_p)
+  if(colorin && colorin->so->get_p)
   {
-    for(const GList *modules = dev->iop; modules; modules = g_list_next(modules))
-    {
-      dt_iop_module_t *module = modules->data;
-      if(dt_iop_module_is(module->so, "colorin"))
-      {
-        colorin = module;
-        break;
-      }
-    }
-  }
-  if(colorin)
-  {
-    dt_colorspaces_color_profile_type_t *_type = colorin_so->get_p(colorin->params, "type_work");
-    char *_filename = colorin_so->get_p(colorin->params, "filename_work");
+  // use introspection to get the params values
+    dt_colorspaces_color_profile_type_t *_type = colorin->so->get_p(colorin->params, "type_work");
+    char *_filename = colorin->so->get_p(colorin->params, "filename_work");
     if(_type && _filename)
     {
       *profile_type = *_type;
@@ -1093,37 +1080,21 @@ void dt_ioppr_get_export_profile_type(struct dt_develop_t *dev,
   *profile_type = DT_COLORSPACE_NONE;
   *profile_filename = NULL;
 
-  // use introspection to get the params values
-  dt_iop_module_so_t *colorout_so = NULL;
   dt_iop_module_t *colorout = NULL;
-
-  for(const GList *modules = g_list_last(darktable.iop);
-      modules;
-      modules = g_list_previous(modules))
+  for(const GList *modules = g_list_last(dev->iop); modules; modules = g_list_previous(modules))
   {
-    dt_iop_module_so_t *module_so = modules->data;
-    if(dt_iop_module_is(module_so, "colorout"))
+    dt_iop_module_t *module = modules->data;
+    if(dt_iop_module_is(module, "colorout"))
     {
-      colorout_so = module_so;
+      colorout = module;
       break;
     }
   }
-  if(colorout_so && colorout_so->get_p)
+  if(colorout && colorout->so->get_p)
   {
-    for(const GList *modules = g_list_last(dev->iop); modules; modules = g_list_previous(modules))
-    {
-      dt_iop_module_t *module = modules->data;
-      if(dt_iop_module_is(module->so, "colorout"))
-      {
-        colorout = module;
-        break;
-      }
-    }
-  }
-  if(colorout)
-  {
-    dt_colorspaces_color_profile_type_t *_type = colorout_so->get_p(colorout->params, "type");
-    char *_filename = colorout_so->get_p(colorout->params, "filename");
+    // use introspection to get the params values
+    dt_colorspaces_color_profile_type_t *_type = colorout->so->get_p(colorout->params, "type");
+    char *_filename = colorout->so->get_p(colorout->params, "filename");
     if(_type && _filename)
     {
       *profile_type = *_type;
