@@ -51,18 +51,6 @@ static GtkWidget *remaining_box = NULL;
 
 static GtkWidget *exit_screen = NULL;
 
-static void _process_all_gui_events()
-{
-  // give Gtk a chance to update the screen; we need to let the event
-  // processing run several times for the splash window to actually be
-  // fully displayed/updated
-  for(int i = 0; i < 5; i++)
-  {
-    g_usleep(1000);
-    dt_gui_process_events();
-  }
-}
-
 static GtkWidget *_get_logo()
 {
   // get the darktable logo, including seasonal variants as
@@ -237,8 +225,8 @@ void darktable_splash_screen_create(GtkWindow *parent_window,
   gtk_window_set_decorated(GTK_WINDOW(splash_screen), FALSE);
   gtk_window_set_default_size(GTK_WINDOW(splash_screen), 700, -1);
   gtk_widget_show_all(splash_screen);
-  gtk_widget_hide(remaining_box);
-  _process_all_gui_events();
+  gtk_widget_hide(GTK_WIDGET(remaining_box));
+  dt_gui_process_events();
 }
 
 void darktable_splash_screen_set_progress(const char *msg)
@@ -252,7 +240,7 @@ void darktable_splash_screen_set_progress(const char *msg)
       gtk_widget_hide(remaining_box);
       showing_remaining = FALSE;
     }
-    _process_all_gui_events();
+    dt_gui_process_events();
     gdk_display_sync(gdk_display_get_default());
   }
 }
@@ -285,7 +273,7 @@ void darktable_splash_screen_set_progress_percent(const char *msg,
     }
     gtk_widget_show_all(splash_screen);
     showing_remaining = TRUE;
-    _process_all_gui_events();
+    dt_gui_process_events();
   }
 }
 
@@ -345,7 +333,7 @@ void darktable_exit_screen_create(GtkWindow *parent_window,
   gtk_widget_set_name(message2, "exitscreen-message");
   dt_gui_dialog_add(GTK_DIALOG(exit_screen), GTK_WIDGET(header_box), message1, message2);
   gtk_widget_show_all(exit_screen);
-  _process_all_gui_events();
+  dt_gui_process_events();
 
   // allow it to be hidden by other windows:
   gtk_window_set_keep_above(GTK_WINDOW(exit_screen), FALSE);
