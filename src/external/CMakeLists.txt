@@ -1,4 +1,5 @@
 if(USE_XCF)
+  add_definitions(-include ${CMAKE_CURRENT_SOURCE_DIR}/xcf_error.h)
   add_subdirectory(libxcf)
 endif()
 
