@@ -1618,6 +1618,11 @@ int dt_init(int argc, char *argv[], const gboolean init_gui, const gboolean load
       darktable_splash_screen_create(NULL, TRUE); // force the splash screen for the crawl even if user-disabled
       // scan for cases where the database and xmp files have different timestamps
       changed_xmp_files = dt_control_crawler_run();
+      if(!dt_conf_get_bool("show_splash_screen"))
+      {
+        darktable_splash_screen_destroy();
+        dt_gui_process_events(); // ensure that the splash screen is removed right away
+      }
     }
   }
 
@@ -1820,21 +1825,13 @@ int dt_init(int argc, char *argv[], const gboolean init_gui, const gboolean load
     // init the gui part of views
     darktable_splash_screen_set_progress(_("loading views"));
     dt_view_manager_gui_init(darktable.view_manager);
-
-    // now that other initialization is complete, we can show the main window
-    // we need to do this before Lua is started or we'll either get a hang, or
-    // the module groups don't get set up correctly
-
-    // start by restoring the main window position as stored in the config file
-    dt_gui_gtk_load_config();
-    gtk_widget_show_all(dt_ui_main_window(darktable.gui->ui));
-    // give Gtk a chance to actually process the resizing
-    dt_gui_process_events();
   }
 
 /* init lua last, since it's user made stuff it must be in the real environment */
 #ifdef USE_LUA
   darktable_splash_screen_set_progress(_("initializing Lua"));
+  // after the following Lua startup call, we can no longer use dt_gui_process_events() or we hang;
+  // this also means no more calls to darktable_splash_screen_set_progress()
   dt_lua_init(darktable.lua_state.state, lua_command);
 #else
   darktable_splash_screen_set_progress(_(""));
@@ -1913,8 +1910,6 @@ int dt_init(int argc, char *argv[], const gboolean init_gui, const gboolean load
     if(changed_xmp_files)
       dt_control_crawler_show_image_list(changed_xmp_files);
 
-    darktable_splash_screen_destroy();
-
     if(!dt_gimpmode())
      dt_start_backtumbs_crawler();
   }
@@ -1932,10 +1927,16 @@ int dt_init(int argc, char *argv[], const gboolean init_gui, const gboolean load
   dt_capabilities_add("nonapple");
 #endif
 
-  // if we hid the main window by iconifying it, make sure to restore its geometry
   if(init_gui)
   {
-    gtk_window_deiconify(GTK_WINDOW(dt_ui_main_window(darktable.gui->ui)));
+    // show the main window and restore its geometry to that saved in the config file
+    gtk_widget_show_all(dt_ui_main_window(darktable.gui->ui));
+    dt_gui_gtk_load_config();
+    darktable_splash_screen_destroy();
+
+    // finally set the cursor to be the default.
+    // for some reason this is needed on some systems to pick up the correctly themed cursor
+    dt_control_change_cursor(GDK_LEFT_PTR);
   }
 
   dt_print(DT_DEBUG_CONTROL,

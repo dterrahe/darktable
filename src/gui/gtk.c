@@ -771,8 +771,8 @@ int dt_gui_gtk_load_config()
   const gint x = MAX(0, dt_conf_get_int("ui_last/window_x"));
   const gint y = MAX(0, dt_conf_get_int("ui_last/window_y"));
 
-  gtk_window_move(GTK_WINDOW(widget), x, y);
   gtk_window_resize(GTK_WINDOW(widget), width, height);
+  gtk_window_move(GTK_WINDOW(widget), x, y);
   const gboolean fullscreen = dt_conf_get_bool("ui_last/fullscreen");
 
   if(fullscreen)
@@ -1383,7 +1383,6 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
                                                 widgets.right_scrolled_window);
   gtk_container_set_focus_vadjustment (box, gtk_scrolled_window_get_vadjustment (swin));
   */
-  dt_colorspaces_set_display_profile(DT_COLORSPACE_DISPLAY);
   // update the profile when the window is moved. resize is already handled in configure()
   widget = dt_ui_main_window(darktable.gui->ui);
   g_signal_connect(G_OBJECT(widget), "configure-event",
@@ -1469,10 +1468,6 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
     }
   }
   g_list_free(input_devices);
-
-  // finally set the cursor to be the default.
-  // for some reason this is needed on some systems to pick up the correctly themed cursor
-  dt_control_change_cursor(GDK_LEFT_PTR);
 
   // create focus-peaking button
   darktable.gui->focus_peaking_button =
@@ -1697,54 +1692,13 @@ static void _init_widgets(dt_gui_gtk_t *gui)
                                                   DT_UI_BORDER_BOTTOM);
   gtk_box_pack_start(GTK_BOX(container), gui->widgets.bottom_border, FALSE, TRUE, 0);
 
-  // configure main window position, colors, fonts, etc.
-  gint splash_x, splash_y, splash_w, splash_h;
-  darktable_splash_screen_get_geometry(&splash_x, &splash_y, &splash_w, &splash_h);
-  if(splash_w == -1)
-  {
-    // use the previously-saved geometry; we'll be setting the window to this size later anyway
-    dt_gui_gtk_load_config();
-  }
-  else
-  {
-    // the main window peeks out behind the splash screen so we reduce the dimensions
-    if(splash_h > 100 && splash_w > 100)
-    {
-      splash_x += 20;
-      splash_y += 50;
-      splash_w -= 100;
-      splash_h -= 100;
-    }
-    gtk_window_move(GTK_WINDOW(dt_ui_main_window(gui->ui)), splash_x, splash_y);
-    gtk_window_resize(GTK_WINDOW(dt_ui_main_window(gui->ui)), splash_w, splash_h);
-  }
   dt_gui_apply_theme();
-  dt_gui_process_events();
 
-  // Showing everything, to ensure proper instantiation and initialization
   // then we hide the scroll bars and popup messages again
-  // before doing this, request that the window be minimized (some WMs
-  // don't support this, so we can hide it below, but that had issues)
-//  gtk_window_iconify(GTK_WINDOW(dt_ui_main_window(gui->ui)));
-// unfortunately, on some systems the above results in a window which can only be manually deiconified....
-  gtk_widget_show_all(dt_ui_main_window(gui->ui));
   gtk_widget_set_visible(dt_ui_log_msg(gui->ui), FALSE);
   gtk_widget_set_visible(dt_ui_toast_msg(gui->ui), FALSE);
   gtk_widget_set_visible(gui->scrollbars.hscrollbar, FALSE);
   gtk_widget_set_visible(gui->scrollbars.vscrollbar, FALSE);
-
-  // if the WM doesn't support minimization, we want to hide the
-  // window so that we don't actually see it until the rest of the
-  // initialization is complete
-//  gtk_widget_hide(dt_ui_main_window(gui->ui));  //FIXME: on some systems, the main window never un-hides later...
-
-  // finally, process all accumulated GUI events so that everything is properly
-  // set up before proceeding
-  for(int i = 0; i < 5; i++)
-  {
-    g_usleep(500);
-    dt_gui_process_events();
-  }
 }
 
 static const dt_action_def_t _action_def_focus_tabs;
