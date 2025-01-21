@@ -1049,7 +1049,7 @@ void dt_guides_init_module_widget(GtkWidget *iopw,
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *cb = module->guides_combo = gtk_check_button_new_with_label(_("show guides"));
   gtk_widget_set_name(box, "guides-module-combobox");
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(cb))), PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(cb, PANGO_ELLIPSIZE_START);
 
   gchar *key = _conf_get_path(module->op, "autoshow", NULL);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(cb), dt_conf_get_bool(key));

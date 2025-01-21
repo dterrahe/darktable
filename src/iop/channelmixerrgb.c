@@ -4531,8 +4531,7 @@ void gui_init(dt_iop_module_t *self)
   gchar *label = N_("take channel mixing into account");
   g->use_mixing = gtk_check_button_new_with_label(_(label));
   dt_action_define_iop(self, N_("mapping"), label, g->use_mixing, &dt_action_def_toggle);
-  gtk_label_set_ellipsize
-    (GTK_LABEL(gtk_bin_get_child(GTK_BIN(g->use_mixing))), PANGO_ELLIPSIZE_END);
+  dt_gui_button_ellipsize(g->use_mixing, PANGO_ELLIPSIZE_END);
   gtk_widget_set_tooltip_text
     (g->use_mixing,
      _("compute the target by taking the channel mixing into account.\n"

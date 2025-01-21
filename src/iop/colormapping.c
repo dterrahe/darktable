@@ -1012,13 +1012,13 @@ void gui_init(dt_iop_module_t *self)
   g->acquire_source_button = dt_iop_button_new(self, N_("acquire as source"),
                                                G_CALLBACK(acquire_source_button_pressed), FALSE, 0, 0,
                                                NULL, 0, box);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(g->acquire_source_button))), PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(g->acquire_source_button, PANGO_ELLIPSIZE_START);
   gtk_widget_set_tooltip_text(g->acquire_source_button, _("analyze this image as a source image"));
 
   g->acquire_target_button = dt_iop_button_new(self, N_("acquire as target"),
                                                G_CALLBACK(acquire_target_button_pressed), FALSE, 0, 0,
                                                NULL, 0, box);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(g->acquire_target_button))), PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(g->acquire_target_button, PANGO_ELLIPSIZE_START);
   gtk_widget_set_tooltip_text(g->acquire_target_button, _("analyze this image as a target image"));
 
   g->clusters = dt_bauhaus_slider_from_params(self, "n");

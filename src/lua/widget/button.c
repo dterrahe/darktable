@@ -17,6 +17,7 @@
  */
 #include "lua/types.h"
 #include "lua/widget/common.h"
+#include "gui/gtk.h"
 
 /*
   we can't guarantee the order of label and ellipsize|halign calls so
@@ -89,7 +90,7 @@ static int ellipsize_member(lua_State *L)
     luaA_to(L, dt_lua_ellipsize_mode_t, &ellipsize, 3);
     // check for label before trying to ellipsize it
     if(gtk_button_get_label(GTK_BUTTON(button->widget)))
-      gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(button->widget))), ellipsize);
+      dt_gui_button_ellipsize(button->widget, ellipsize);
     else
     {
       ellipsize_store.mode = ellipsize;
@@ -135,7 +136,7 @@ static int label_member(lua_State *L)
     gtk_button_set_label(GTK_BUTTON(button->widget), label);
     if(ellipsize_store.used)
     {
-      gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(button->widget))), ellipsize_store.mode);
+      dt_gui_button_ellipsize(button->widget, ellipsize_store.mode);
       ellipsize_store.used = FALSE;
     }
     if(halign_store.used)

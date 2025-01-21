@@ -552,6 +552,8 @@ void dt_gui_simulate_button_event(GtkWidget *widget,
                                   const GdkEventType eventtype,
                                   const int button);
 
+void dt_gui_button_ellipsize(GtkWidget *button, PangoEllipsizeMode mode);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif /* __cplusplus */

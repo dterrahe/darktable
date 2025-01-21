@@ -295,8 +295,7 @@ void _lib_import_ui_devices_update(dt_lib_module_t *self)
         gtk_box_pack_start(GTK_BOX(vbx),
                            (ib = gtk_button_new_with_label(_("copy & import from camera"))),
                            FALSE, FALSE, 0);
-        gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(ib))),
-                                PANGO_ELLIPSIZE_END);
+        dt_gui_button_ellipsize(ib, PANGO_ELLIPSIZE_END);
         d->import_camera = GTK_BUTTON(ib);
         d->camera = camera;
         g_signal_connect(G_OBJECT(ib), "clicked",
@@ -353,8 +352,7 @@ void _lib_import_ui_devices_update(dt_lib_module_t *self)
       GtkWidget *vbx = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
       gtk_box_pack_start(GTK_BOX(vbx), im, FALSE, FALSE, 0);
-      gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(im))),
-                              PANGO_ELLIPSIZE_END);
+      dt_gui_button_ellipsize(im, PANGO_ELLIPSIZE_END);
       d->mount_camera = GTK_BUTTON(im);
 
       g_signal_connect(G_OBJECT(im), "clicked",
