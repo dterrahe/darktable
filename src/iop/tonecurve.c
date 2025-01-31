@@ -111,7 +111,6 @@ typedef struct dt_iop_tonecurve_gui_data_t
   int minmax_curve_nodes[3];
   int minmax_curve_type[3];
   GtkDrawingArea *area;
-  GtkSizeGroup *sizegroup;
   GtkWidget *autoscale_ab;
   GtkNotebook *channel_tabs;
   GtkWidget *colorpicker;
@@ -1328,16 +1327,12 @@ void gui_init(dt_iop_module_t *self)
   g_signal_connect(G_OBJECT(g->logbase), "value-changed",
                    G_CALLBACK(logbase_callback), self);
 
-  g->sizegroup = GTK_SIZE_GROUP(gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL));
-  gtk_size_group_add_widget(g->sizegroup, GTK_WIDGET(g->area));
-  gtk_size_group_add_widget(g->sizegroup, GTK_WIDGET(g->channel_tabs));
 }
 
 void gui_cleanup(dt_iop_module_t *self)
 {
   dt_iop_tonecurve_gui_data_t *g = self->gui_data;
   // this one we need to unref manually. not so the initially unowned widgets.
-  g_object_unref(g->sizegroup);
   dt_draw_curve_destroy(g->minmax_curve[ch_L]);
   dt_draw_curve_destroy(g->minmax_curve[ch_a]);
   dt_draw_curve_destroy(g->minmax_curve[ch_b]);

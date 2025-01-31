@@ -1800,6 +1800,7 @@ void gui_init(dt_lib_module_t *self)
   box = _gui_init_datetime(_("date/time offset"), &d->of, 2, self, group, d->lock_offset,
                            _("offset or difference ([-]dd hh:mm:ss[.sss])"));
   gtk_grid_attach(grid, box, 0, line++, 4, 1);
+  g_object_unref(group);
 
   // apply
   d->apply_offset = dt_action_button_new(self, N_("apply offset"), _apply_offset_callback, self,
