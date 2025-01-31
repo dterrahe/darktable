@@ -264,8 +264,6 @@ table,
 table *,
 row,
 row *,
-frame,
-frame *,
 filechooser,
 filechooser *,
 filechooserdialog,
@@ -603,6 +601,7 @@ dialog .sidebar row:selected:hover label,
 #module-header
 {
   border-bottom: 1px solid shade(@plugin_bg_color, 1.05);
+  background-color: @bg_color;
   padding: 0.5em;
 }
 
