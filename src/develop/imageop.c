@@ -2492,14 +2492,14 @@ void dt_iop_gui_set_expanded(dt_iop_module_t *module,
                              const gboolean expanded,
                              const gboolean collapse_others)
 {
-  if(!module->expander) return;
+  if(module && !module->expander) return;
   /* handle shiftclick on expander, hide all except this */
   if(collapse_others)
   {
-    const int current_group = dt_dev_modulegroups_get_activated(module->dev);
+    const int current_group = dt_dev_modulegroups_get_activated(darktable.develop);
     const gboolean group_only = dt_conf_get_bool("darkroom/ui/single_module_group_only");
 
-    GList *iop = module->dev->iop;
+    GList *iop = darktable.develop->iop;
     gboolean all_other_closed = TRUE;
     while(iop)
     {
@@ -2508,11 +2508,12 @@ void dt_iop_gui_set_expanded(dt_iop_module_t *module,
       {
         all_other_closed = all_other_closed && !m->expanded;
         gtk_widget_set_margin_top(DTGTK_EXPANDER(m->expander)->header_evb, 0); // don't scroll to module if at top
-        _gui_set_single_expanded(m, FALSE);
+        _gui_set_single_expanded(m, !module);
       }
 
       iop = g_list_next(iop);
     }
+    if(!module) return;
     if(all_other_closed)
       _gui_set_single_expanded(module, !module->expanded);
     else
@@ -2565,7 +2566,7 @@ static gboolean _iop_plugin_header_button_release(GtkWidget *w,
   if(e->button == GDK_BUTTON_PRIMARY)
   {
     if(dt_modifier_is(e->state, GDK_SHIFT_MASK | GDK_CONTROL_MASK))
-      ; // do nothing (for easier dragging)
+      dt_iop_gui_set_expanded(NULL, FALSE, TRUE); // expand all
     else if(dt_modifier_is(e->state, GDK_CONTROL_MASK))
     {
       dt_iop_gui_rename_module(module);
