@@ -1163,7 +1163,7 @@ void dt_bauhaus_widget_set_field(GtkWidget *widget,
                                  const dt_introspection_type_t field_type)
 {
   dt_bauhaus_widget_t *w = DT_BAUHAUS_WIDGET(widget);
-  if(w->label)
+  if(w->label && !w->field)
     dt_print(DT_DEBUG_ALWAYS,
              "[dt_bauhaus_widget_set_field] bauhaus label '%s'"
              " set before field (needs to be after)",
