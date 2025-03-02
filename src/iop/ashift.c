@@ -3427,8 +3427,8 @@ static void do_fit(dt_iop_module_t *self,
 
   ++darktable.gui->reset;
   dt_bauhaus_slider_set(g->rotation, p->rotation);
-  dt_bauhaus_slider_set(g->lensshift_v, p->lensshift_v);
-  dt_bauhaus_slider_set(g->lensshift_h, p->lensshift_h);
+  dt_bauhaus_slider_set(g->lensshift_v, g->isflipped ? p->lensshift_h : p->lensshift_v);
+  dt_bauhaus_slider_set(g->lensshift_h, g->isflipped ? p->lensshift_v : p->lensshift_h);
   dt_bauhaus_slider_set(g->shear, p->shear);
   --darktable.gui->reset;
 }
@@ -5695,18 +5695,10 @@ void reload_defaults(dt_iop_module_t *self)
   dt_iop_ashift_gui_data_t *g = self->gui_data;
   if(g)
   {
-
-    char string_v[256];
-    char string_h[256];
-
-    snprintf(string_v, sizeof(string_v),
-             _("lens shift (%s)"), isflipped ? _("horizontal") : _("vertical"));
-    snprintf(string_h, sizeof(string_h),
-             _("lens shift (%s)"), isflipped ? _("vertical") : _("horizontal"));
-
-    dt_bauhaus_widget_set_label(g->lensshift_v, NULL, string_v);
-    dt_bauhaus_widget_set_label(g->lensshift_h, NULL, string_h);
-
+    dt_iop_ashift_params_t *p = self->params;
+    dt_bauhaus_widget_set_field(g->lensshift_v, isflipped ? &p->lensshift_h : &p->lensshift_v, DT_INTROSPECTION_TYPE_FLOAT);
+    dt_bauhaus_widget_set_field(g->lensshift_h, isflipped ? &p->lensshift_v : &p->lensshift_h, DT_INTROSPECTION_TYPE_FLOAT);
+  
     dt_bauhaus_slider_set_default(g->f_length, f_length);
     dt_bauhaus_slider_set_default(g->crop_factor, crop_factor);
 
@@ -5789,10 +5781,12 @@ void cleanup_global(dt_iop_module_so_t *self)
 }
 
 // adjust labels of lens shift parameters according to flip status of image
+// FIXME won't get called when widgets in QAP
 static gboolean _event_draw(GtkWidget *widget,
                             cairo_t *cr,
                             dt_iop_module_t *self)
 {
+  dt_iop_ashift_params_t *p = self->params;
   const dt_iop_ashift_gui_data_t *g = self->gui_data;
   if(darktable.gui->reset) return FALSE;
 
@@ -5802,17 +5796,12 @@ static gboolean _event_draw(GtkWidget *widget,
 
   if(isflipped == -1) return FALSE;
 
-  char string_v[256];
-  char string_h[256];
-
-  snprintf(string_v, sizeof(string_v),
-           _("lens shift (%s)"), isflipped ? _("horizontal") : _("vertical"));
-  snprintf(string_h, sizeof(string_h),
-           _("lens shift (%s)"), isflipped ? _("vertical") : _("horizontal"));
+  dt_bauhaus_widget_set_field(g->lensshift_v, isflipped ? &p->lensshift_h : &p->lensshift_v, DT_INTROSPECTION_TYPE_FLOAT);
+  dt_bauhaus_widget_set_field(g->lensshift_h, isflipped ? &p->lensshift_v : &p->lensshift_h, DT_INTROSPECTION_TYPE_FLOAT);
 
   ++darktable.gui->reset;
-  dt_bauhaus_widget_set_label(g->lensshift_v, NULL, string_v);
-  dt_bauhaus_widget_set_label(g->lensshift_h, NULL, string_h);
+  dt_bauhaus_slider_set(g->lensshift_v, isflipped ? p->lensshift_h : p->lensshift_v);
+  dt_bauhaus_slider_set(g->lensshift_h, isflipped ? p->lensshift_v : p->lensshift_h);
   --darktable.gui->reset;
 
   return FALSE;
@@ -6065,9 +6054,9 @@ void gui_init(dt_iop_module_t *self)
      _("rotate image\nright-click and drag to define a horizontal or vertical"
        " line by drawing on the image"));
   gtk_widget_set_tooltip_text
-    (g->lensshift_v, _("apply lens shift correction in one direction"));
+    (g->lensshift_v, _("apply lens shift correction in vertical direction"));
   gtk_widget_set_tooltip_text
-    (g->lensshift_h, _("apply lens shift correction in one direction"));
+    (g->lensshift_h, _("apply lens shift correction in horizontal direction"));
   gtk_widget_set_tooltip_text
     (g->shear, _("shear the image along one diagonal"));
   gtk_widget_set_tooltip_text(g->cropmode, _("automatically crop to avoid black edges"));
