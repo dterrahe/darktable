@@ -628,9 +628,7 @@ void gui_init(dt_iop_module_t *self)
   g->mode_stack = gtk_stack_new();
   gtk_stack_set_homogeneous(GTK_STACK(g->mode_stack),FALSE);
 
-  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL,
-                                               0,
-                                               "plugins/darkroom/levels/graphheight"));
+  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL, 0, "plugins/darkroom/levels/aspect_percent"));
   gtk_widget_set_tooltip_text(GTK_WIDGET(g->area),_("drag handles to set black, gray, and white points. "
                                                     "operates on L channel."));
   dt_action_define_iop(self, NULL, N_("levels"), GTK_WIDGET(g->area), NULL);

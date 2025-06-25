@@ -2657,9 +2657,8 @@ void gui_init(dt_iop_module_t *self)
                        g->colorpicker_set_values, &dt_action_def_toggle);
 
   // the nice graph
-  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL,
-                                               0,
-                                               "plugins/darkroom/colorzones/graphheight"));
+  g->area = GTK_DRAWING_AREA
+    (dt_ui_resize_wrap(NULL, 0, "plugins/darkroom/colorzones/aspect_percent"));
 
   g->bottom_area = gtk_drawing_area_new();
   gtk_widget_set_vexpand(g->bottom_area, TRUE);

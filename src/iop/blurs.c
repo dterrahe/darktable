@@ -770,7 +770,7 @@ void gui_init(dt_iop_module_t *self)
   g->img = NULL;
   g->img_width = 0.f;
 
-  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_height(0));
+  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_aspect_ratio(1.f));
   g_signal_connect(G_OBJECT(g->area), "draw", G_CALLBACK(_dt_iop_tonecurve_draw), self);
   self->widget = dt_gui_vbox(g->area);
 
