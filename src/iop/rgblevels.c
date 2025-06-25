@@ -1042,9 +1042,8 @@ void gui_init(dt_iop_module_t *self)
   g_signal_connect(G_OBJECT(g->channel_tabs), "switch_page",
                    G_CALLBACK(_tab_switch_callback), self);
 
-  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap(NULL,
-                                               0,
-                                               "plugins/darkroom/rgblevels/graphheight"));
+  g->area = GTK_DRAWING_AREA(dt_ui_resize_wrap
+                             (NULL, 0, "plugins/darkroom/rgblevels/aspect_percent"));
 
   g_object_set_data(G_OBJECT(g->area), "iop-instance", self);
   dt_action_define_iop(self, NULL, N_("levels"), GTK_WIDGET(g->area), &_action_def_levels);

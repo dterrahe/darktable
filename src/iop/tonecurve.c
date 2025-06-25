@@ -1283,7 +1283,7 @@ void gui_init(dt_iop_module_t *self)
   dt_gui_box_add(self->widget, dt_gui_hbox(dt_gui_expand(g->channel_tabs), 
                                            dt_gui_align_right(g->colorpicker)));
 
-  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_height(0));
+  g->area = GTK_DRAWING_AREA(dtgtk_drawing_area_new_with_aspect_ratio(1.0));
   g_object_set_data(G_OBJECT(g->area), "iop-instance", self);
   dt_action_define_iop(self, NULL, N_("curve"), GTK_WIDGET(g->area), NULL);
 
