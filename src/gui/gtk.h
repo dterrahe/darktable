@@ -635,6 +635,8 @@ void dt_gui_commit_on_focus_loss(GtkCellRenderer *renderer, GtkCellEditable **ac
 // restore dialog size from config file
 void dt_gui_dialog_restore_size(GtkDialog *dialog, const char *conf);
 
+#define dt_gui_button_ellipsize(button, mode) gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(button))), mode)
+
 PangoFontDescription *dt_gui_get_font(void);
 
 // returns the session type at runtime

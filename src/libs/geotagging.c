@@ -1948,7 +1948,7 @@ void gui_init(dt_lib_module_t *self)
   d->map.preview_button = gtk_check_button_new_with_label(_("preview images"));
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(d->map.preview_button), TRUE);
   gtk_widget_set_sensitive(d->map.preview_button, FALSE);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->map.preview_button))), PANGO_ELLIPSIZE_END);
+  dt_gui_button_ellipsize(d->map.preview_button, PANGO_ELLIPSIZE_END);
   gtk_grid_attach(grid, d->map.preview_button, 0, line, 1, 1);
   gtk_widget_set_tooltip_text(d->map.preview_button, _("show on map matching images"));
   g_signal_connect(GTK_TOGGLE_BUTTON(d->map.preview_button), "toggled", G_CALLBACK(_images_preview_toggled), self);

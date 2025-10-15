@@ -5252,8 +5252,7 @@ GtkWidget *dt_action_button_new(dt_lib_module_t *self,
 {
   GtkWidget *button = gtk_button_new_with_label(Q_(label));
   gtk_widget_set_hexpand(button, TRUE);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(button))),
-                          PANGO_ELLIPSIZE_END);
+  dt_gui_button_ellipsize(button, PANGO_ELLIPSIZE_END);
   if(tooltip) gtk_widget_set_tooltip_text(button, tooltip);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(callback), data);
 
