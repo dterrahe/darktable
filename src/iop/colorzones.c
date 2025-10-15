@@ -2668,8 +2668,7 @@ void gui_init(dt_iop_module_t *self)
   gchar *label = N_("edit by area");
   g->chk_edit_by_area = gtk_check_button_new_with_label(_(label));
   dt_action_define_iop(self, NULL, label, g->chk_edit_by_area, &dt_action_def_toggle);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(g->chk_edit_by_area))),
-                          PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(g->chk_edit_by_area, PANGO_ELLIPSIZE_START);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g->chk_edit_by_area), g->edit_by_area);
   gtk_widget_set_tooltip_text(g->chk_edit_by_area, _("edit the curve nodes by area"));
   g_signal_connect(G_OBJECT(g->chk_edit_by_area), "toggled",

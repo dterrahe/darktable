@@ -159,9 +159,9 @@ void gui_init(dt_lib_module_t *self)
                                               _("select untouched images in\ncurrent collection"), 0, 0);
   gtk_grid_attach(grid, d->select_untouched_button, 0, line, 2, 1);
 
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->select_all_button))), PANGO_ELLIPSIZE_START);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->select_none_button))), PANGO_ELLIPSIZE_START);
-  gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->select_film_roll_button))), PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(d->select_all_button, PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(d->select_none_button, PANGO_ELLIPSIZE_START);
+  dt_gui_button_ellipsize(d->select_film_roll_button, PANGO_ELLIPSIZE_START);
 
   DT_CONTROL_SIGNAL_HANDLE(DT_SIGNAL_SELECTION_CHANGED, _image_selection_changed_callback);
   DT_CONTROL_SIGNAL_HANDLE(DT_SIGNAL_COLLECTION_CHANGED, _collection_updated_callback);

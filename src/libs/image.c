@@ -487,8 +487,6 @@ static void _pastemode_combobox_changed(GtkWidget *widget,
   dt_conf_set_int("plugins/lighttable/copy_metadata/pastemode", mode);
 }
 
-#define ellipsize_button(button) gtk_label_set_ellipsize(GTK_LABEL(gtk_bin_get_child(GTK_BIN(button))), PANGO_ELLIPSIZE_END);
-
 void gui_init(dt_lib_module_t *self)
 {
   dt_lib_image_t *d = malloc(sizeof(dt_lib_image_t));
@@ -608,7 +606,7 @@ void gui_init(dt_lib_module_t *self)
   GtkWidget *flag = gtk_check_button_new_with_label(_(label));    \
   d->item##_flag = flag;                                          \
   gtk_widget_set_tooltip_text(flag, tooltip);                     \
-  ellipsize_button(flag);                                         \
+  dt_gui_button_ellipsize(flag, PANGO_ELLIPSIZE_END);             \
   gtk_grid_attach(grid, flag, left, !left ? ++line : line, 3, 1); \
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(flag),           \
     dt_conf_get_bool("plugins/lighttable/copy_metadata/" #item)); \
@@ -677,7 +675,6 @@ void gui_init(dt_lib_module_t *self)
   d->imageid = 0;
   _image_preference_changed(NULL, self); // update delete button label/tooltip
 }
-#undef ellipsize_button
 
 void gui_reset(dt_lib_module_t *self)
 {

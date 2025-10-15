@@ -687,9 +687,7 @@ void gui_update(dt_iop_module_t *self)
   gchar *label = g_strdup_printf(_("compensate camera exposure (%+.1f EV)"),
                                  _get_exposure_bias(self));
   gtk_button_set_label(GTK_BUTTON(g->compensate_exposure_bias), label);
-  gtk_label_set_ellipsize
-    (GTK_LABEL(gtk_bin_get_child(GTK_BIN(g->compensate_exposure_bias))),
-     PANGO_ELLIPSIZE_MIDDLE);
+  dt_gui_button_ellipsize(g->compensate_exposure_bias, PANGO_ELLIPSIZE_MIDDLE);
   g_free(label);
 
   const float hlbias = _get_highlight_bias(self);
