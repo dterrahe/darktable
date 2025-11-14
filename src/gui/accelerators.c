@@ -3675,7 +3675,18 @@ static gboolean _shortcut_closest_match(GSequenceIter **current,
   if(!s->element) s->element = c->element;
   if(c->instance) s->instance = c->instance;
 
-  if(!s->action) s->action = c->action;
+  if(!s->action)
+  {
+    if(c->action != darktable.control->actions_focused_bh)
+      s->action = c->action;
+    else
+    {
+      GtkWidget *focused_widget = gtk_window_get_focus(GTK_WINDOW(dt_ui_main_window(darktable.gui->ui)));
+      if(DT_IS_BAUHAUS_WIDGET(focused_widget))
+        s->action = dt_action_widget(focused_widget);
+    }
+  }
+
   if(!*elements) *elements = _action_find_elements(s->action);
 
   if(ELEMENT_IS(value, s, *elements) && c->effect == DT_ACTION_EFFECT_SET)

@@ -907,12 +907,12 @@ void dt_bauhaus_init()
   g_signal_connect(area, "key-press-event", G_CALLBACK(_popup_key_press), NULL);
   g_signal_connect(area, "scroll-event", G_CALLBACK(_popup_scroll), NULL);
 
-  dt_action_define(&darktable.control->actions_focus, NULL, N_("sliders"),
-                   NULL, &_action_def_focus_slider);
-  dt_action_define(&darktable.control->actions_focus, NULL, N_("dropdowns"),
-                   NULL, &_action_def_focus_combo);
-  dt_action_define(&darktable.control->actions_focus, NULL, N_("buttons"),
-                   NULL, &_action_def_focus_button);
+  dt_control_t *s = darktable.control;
+  s->actions_focused_bh = dt_action_define(&s->actions_global, NULL,
+                                           N_("focused slider or dropdown"), NULL, &_action_def_combo);
+  dt_action_define(&s->actions_focus, NULL, N_("sliders"), NULL, &_action_def_focus_slider);
+  dt_action_define(&s->actions_focus, NULL, N_("dropdowns"), NULL, &_action_def_focus_combo);
+  dt_action_define(&s->actions_focus, NULL, N_("buttons"), NULL, &_action_def_focus_button);
 }
 
 void dt_bauhaus_cleanup()

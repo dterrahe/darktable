@@ -138,7 +138,7 @@ typedef struct dt_control_t
   dt_action_t *actions, actions_global,
                actions_views, actions_thumb,
                actions_libs, actions_format, actions_storage,
-               actions_iops, actions_blend, actions_focus,
+               actions_iops, actions_blend, actions_focus, *actions_focused_bh,
                actions_lua, actions_fallbacks, *actions_modifiers;
 
   GSequence *shortcuts;
