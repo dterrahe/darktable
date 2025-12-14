@@ -1970,17 +1970,7 @@ int dt_init(int argc,
     // Save the shortcuts including defaults
     dt_shortcuts_save(NULL, TRUE);
 
-    // connect the shortcut dispatcher
-    // GtkEventController *legacy_controller = gtk_event_controller_legacy_new();
-    // gtk_widget_add_controller(dt_ui_main_window(darktable.gui->ui), legacy_controller);
-    // g_signal_connect(legacy_controller, "event",
-    //                  G_CALLBACK(dt_shortcut_dispatcher), NULL);
-    const gchar *eventnames[] = { "key-press-event", "key-release-event",
-                                  "button-press-event", "button-release-event",
-                                  "scroll-event", NULL };
-    for(int i = 0; eventnames[i] != NULL; i++)
-      g_signal_connect(dt_ui_main_window(darktable.gui->ui), eventnames[i],
-                      G_CALLBACK(dt_shortcut_dispatcher), NULL);
+    dt_shortcut_connect_dispatcher(dt_ui_main_window(darktable.gui->ui));
 
     // load image(s) specified on cmdline.  this has to happen after
     // lua is initialized as image import can run lua code
@@ -2935,6 +2925,7 @@ gulong dt_signal_connect_data_with_caller(gpointer instance,
   {
     signal_name = "scroll";
     controller = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES | GTK_EVENT_CONTROLLER_SCROLL_DISCRETE);
+    g_object_set_data(instance, "scroll", controller);
     handler = G_CALLBACK(_widget_scroll);
   }
   else if(g_str_has_prefix(detailed_signal, "focus-"))

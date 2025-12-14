@@ -1541,7 +1541,6 @@ static gboolean _toolbar_show_popup(gpointer user_data)
       .y = rect.origin.y,
       .width = 1, .height = 1
     };
-dt_print(0, "button rect: x=%d y=%d w=%d h=%d\n", gdk_rect.x, gdk_rect.y, gdk_rect.width, gdk_rect.height);
     gtk_popover_set_pointing_to(GTK_POPOVER(popover), &gdk_rect);
     gtk_popover_set_position(GTK_POPOVER(popover), GTK_POS_TOP);
   }
@@ -4045,8 +4044,7 @@ static void _darkroom_display_second_window(dt_develop_t *dev)
 
     g_signal_connect(G_OBJECT(dev->second_wnd), "delete-event",
                      G_CALLBACK(_second_window_delete_callback), dev);
-    g_signal_connect(G_OBJECT(dev->second_wnd), "event",
-                     G_CALLBACK(dt_shortcut_dispatcher), NULL);
+    dt_shortcut_connect_dispatcher(dev->second_wnd);
 
     _darkroom_ui_second_window_init(dev->second_wnd, dev);
   }

@@ -1340,8 +1340,12 @@ void dt_lib_gui_set_label(dt_lib_module_t *module,
 {
   if(!module->expander) return;
   GtkWidget *header = DTGTK_EXPANDER(module->expander)->header;
-  gtk_box_set_center_widget(GTK_BOX(header), gtk_label_new(label));
-  gtk_widget_show_all(header);
+  GtkWidget *module_name = gtk_widget_get_first_child(header);
+  GtkWidget *label_widget = gtk_widget_get_next_sibling(module_name);
+  if(GTK_IS_LABEL(label_widget))
+    gtk_widget_unparent(label_widget);
+  gtk_widget_set_hexpand(module_name, FALSE);
+  gtk_box_insert_child_after(GTK_BOX(header), dt_gui_expand(dt_ui_label_new(label)), module_name);
 }
 
 static void _preferences_changed(gpointer instance, gpointer self)

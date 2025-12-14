@@ -1957,7 +1957,7 @@ static void _grab_in_tree_view(GtkTreeView *tree_view)
   g_set_weak_pointer(&_grab_window, gtk_widget_get_toplevel(_grab_widget));
   if(_sc.action && _sc.action->type == DT_ACTION_TYPE_FALLBACK)
     dt_shortcut_key_press(DT_SHORTCUT_DEVICE_KEYBOARD_MOUSE, 0, 0);
-  g_signal_connect(_grab_window, "event", G_CALLBACK(dt_shortcut_dispatcher), NULL);
+  dt_shortcut_connect_dispatcher(_grab_window);
 }
 
 static void _shortcut_row_activated(GtkTreeView *tree_view,
@@ -3964,7 +3964,7 @@ static void _ungrab_grab_widget()
     gtk_widget_set_sensitive(_grab_widget, TRUE);
     gtk_widget_set_tooltip_text(_grab_widget, NULL);
     g_signal_handlers_disconnect_by_func(gtk_widget_get_toplevel(_grab_widget),
-                                         G_CALLBACK(dt_shortcut_dispatcher), NULL);
+                                         G_CALLBACK(dt_shortcut_dispatcher), NULL); // GTK4
     _grab_widget = NULL;
   }
 }
@@ -4747,6 +4747,20 @@ gboolean dt_shortcut_dispatcher(GtkWidget *w,
   }
 
   return TRUE;
+}
+
+void dt_shortcut_connect_dispatcher(GtkWidget *widget)
+{
+  const gchar *eventnames[] = { "key-press-event", "key-release-event",
+                                "button-press-event", "button-release-event",
+                                "scroll-event",
+                                "motion-notify-event",
+                                NULL };
+  for(int i = 0; eventnames[i] != NULL; i++)
+    g_signal_connect(widget, eventnames[i], G_CALLBACK(dt_shortcut_dispatcher), NULL);
+  gtk_event_controller_set_propagation_phase(g_object_get_data(G_OBJECT(widget), "click" ), GTK_PHASE_CAPTURE);
+  gtk_event_controller_set_propagation_phase(g_object_get_data(G_OBJECT(widget), "scroll"), GTK_PHASE_CAPTURE);
+  gtk_event_controller_set_propagation_phase(g_object_get_data(G_OBJECT(widget), "motion"), GTK_PHASE_CAPTURE);
 }
 
 void dt_action_insert_sorted(dt_action_t *owner, dt_action_t *new_action)
