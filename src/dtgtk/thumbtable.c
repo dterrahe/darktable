@@ -2787,6 +2787,9 @@ void dt_thumbtable_full_redraw(dt_thumbtable_t *table,
 
     if(darktable.unmuted & DT_DEBUG_CACHE)
       dt_mipmap_cache_print();
+
+    // quick "fix" for some of the jitter while resizing but this should not be done in the draw callback
+    if(!force) dt_gui_widget_reallocate_now(table->widget);
   }
 }
 
