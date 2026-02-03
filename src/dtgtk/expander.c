@@ -21,6 +21,7 @@
 #include "control/conf.h"
 #include "gui/gtk.h"
 #include "libs/lib.h"
+#include "bauhaus/bauhaus.h"
 
 #include <gtk/gtk.h>
 
@@ -116,6 +117,7 @@ gboolean dtgtk_expander_get_expanded(GtkDarktableExpander *expander)
 
 static gboolean _expander_scroll(GtkWidget *widget, GdkFrameClock *frame_clock, gpointer user_data)
 {
+  if(darktable.bauhaus->change_active) return G_SOURCE_CONTINUE;
   GtkWidget *sw = gtk_widget_get_ancestor(widget, GTK_TYPE_SCROLLED_WINDOW);
   if(!sw) return G_SOURCE_REMOVE;
 
