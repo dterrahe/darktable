@@ -728,6 +728,7 @@ static void _widget_leave(GtkEventControllerMotion *controller,
   // instead add GTK_STATE_FLAG_PRELIGHT in _widget_draw
   darktable.bauhaus->hovered = !controller ? widget : NULL;
 
+  darktable.bauhaus->change_active = FALSE;
   gtk_widget_queue_draw(widget);
 }
 
@@ -2851,6 +2852,7 @@ static void _popup_hide()
                                          G_CALLBACK(dt_shortcut_dispatcher), NULL);
     bh->current = NULL;
   }
+  bh->change_active = FALSE;
   _stop_cursor();
 }
 
@@ -3053,6 +3055,7 @@ static gboolean _widget_scroll(GtkWidget *widget,
 
     dt_bauhaus_widget_t *w = (dt_bauhaus_widget_t *)widget;
     _request_focus(w);
+    darktable.bauhaus->change_active = TRUE;
 
     if(w->type == DT_BAUHAUS_SLIDER)
     {
@@ -3551,6 +3554,7 @@ static void _widget_button_press(GtkGestureSingle *gesture,
       bh->mouse_x = NAN;
       w->slider.timeout_handle = G_MAXUINT;
       _slider_set_normalized(w, pos);
+      darktable.bauhaus->change_active = TRUE;
     }
   }
 
